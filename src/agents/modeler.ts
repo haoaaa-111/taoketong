@@ -2,7 +2,7 @@ import { chatCompletionJSON } from '@/lib/llm';
 import { readFileSync } from 'fs';
 
 const SYSTEM_PROMPT = readFileSync(
-    require.resolve('./prompts/modeler.md'),
+    process.cwd() + '/prompts/modeler.md',
     'utf-8'
 );
 

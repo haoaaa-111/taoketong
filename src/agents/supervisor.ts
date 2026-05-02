@@ -2,7 +2,7 @@ import { chatCompletionJSON } from '@/lib/llm';
 import { readFileSync } from 'fs';
 
 const SYSTEM_PROMPT = readFileSync(
-    require.resolve('./prompts/supervisor.md'),
+    process.cwd() + '/prompts/supervisor.md',
     'utf-8'
 );
 
