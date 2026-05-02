@@ -3,6 +3,7 @@ import * as dbSessions from '@/db/sessions';
 import * as dbProfile from '@/db/profile';
 import { modelCourseRisk } from './modeler';
 import { generatePlan } from './supervisor';
+import { db } from '@/db';
 import type { PlanAction } from '@/types';
 import { addDays, formatISO } from 'date-fns';
 import { wrapUserInput, sanitizeForPrompt } from '@/lib/prompt-safety';
@@ -74,31 +75,36 @@ export async function generateSession(
         throw new Error('方案生成失败');
     }
 
-    // 6. 旧方案标记为 rejected
-    const latest = dbSessions.getLatestSession();
-    if (latest && latest.session.status === 'draft') {
-        dbSessions.rejectLatestSession();
-    }
+    // 原子 DB 操作：这些操作需要原子性，确保要么全部成功要么全部失败
+    const transaction = db.transaction(() => {
+        // 拒绝最新会话（如果存在且为草稿状态）
+        const latest = dbSessions.getLatestSession();
+        if (latest && latest.session.status === 'draft') {
+            dbSessions.rejectLatestSession();
+        }
 
-    // 7. 创建新方案
-    const startDate = new Date();
-    const endDate = addDays(startDate, (profile.plan_weeks || 1) * 7);
+        // 创建新会话
+        const startDate = new Date();
+        const endDate = addDays(startDate, (profile.plan_weeks || 1) * 7);
 
-    const sessionId = dbSessions.createSession({
-        plan_start_date: formatISO(startDate, { representation: 'date' }),
-        plan_end_date: formatISO(endDate, { representation: 'date' }),
-    });
-
-    // 8. 保存动作
-    const actions: PlanAction[] = result.actions.map(a => {
-        const id = dbSessions.insertAction({
-            session_id: sessionId,
-            schedule_id: a.schedule_id,
-            action: a.action as PlanAction['action'],
-            reason: a.reason,
+        const sessionId = dbSessions.createSession({
+            plan_start_date: formatISO(startDate, { representation: 'date' }),
+            plan_end_date: formatISO(endDate, { representation: 'date' }),
         });
-        return { id, session_id: sessionId, schedule_id: a.schedule_id, action: a.action as PlanAction['action'], reason: a.reason };
+
+        // 保存动作
+        const actions: PlanAction[] = result!.actions.map(a => {
+            const id = dbSessions.insertAction({
+                session_id: sessionId,
+                schedule_id: a.schedule_id,
+                action: a.action as PlanAction['action'],
+                reason: a.reason,
+            });
+            return { id, session_id: sessionId, schedule_id: a.schedule_id, action: a.action as PlanAction['action'], reason: a.reason };
+        });
+
+        return { session_id: sessionId, actions };
     });
 
-    return { session_id: sessionId, actions };
+    return transaction();
 }

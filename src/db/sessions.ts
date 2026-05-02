@@ -1,6 +1,26 @@
 import { db } from './index';
 import type { PlanSession, PlanAction } from '@/types';
 
+export function createSessionWithActions(data: { plan_start_date: string; plan_end_date: string }, actions: Omit<PlanAction, 'id'>[]): number {
+    const transaction = db.transaction(() => {
+        const sessionResult = db.prepare(
+            'INSERT INTO plan_session (plan_start_date, plan_end_date, status) VALUES (?, ?, "draft")'
+        ).run(data.plan_start_date, data.plan_end_date);
+        
+        const sessionId = sessionResult.lastInsertRowid as number;
+        
+        for (const actionData of actions) {
+            db.prepare(
+                'INSERT INTO plan_action (session_id, schedule_id, action, reason) VALUES (?, ?, ?, ?)'
+            ).run(sessionId, actionData.schedule_id, actionData.action, actionData.reason);
+        }
+        
+        return sessionId;
+    });
+    
+    return transaction();
+}
+
 export function getLatestSession(): { session: PlanSession; actions: PlanAction[] } | null {
     const session = db.prepare(
         "SELECT * FROM plan_session ORDER BY created_at DESC LIMIT 1"
@@ -10,8 +30,25 @@ export function getLatestSession(): { session: PlanSession; actions: PlanAction[
     const actions = db.prepare(
         `SELECT pa.* FROM plan_action pa
          JOIN course_schedule cs ON pa.schedule_id = cs.id
+         WHERE pa.session_id = ?
          ORDER BY cs.day_of_week, cs.period_slot`
-    ).all() as PlanAction[];
+    ).all(session.id) as PlanAction[];
+
+    return { session, actions };
+}
+
+export function getLatestSessionWithActions(): { session: PlanSession; actions: PlanAction[] } | null {
+    const session = db.prepare(
+        "SELECT * FROM plan_session ORDER BY created_at DESC LIMIT 1"
+    ).get() as PlanSession | undefined;
+    if (!session) return null;
+
+    const actions = db.prepare(
+        `SELECT pa.* FROM plan_action pa
+         JOIN course_schedule cs ON pa.schedule_id = cs.id
+         WHERE pa.session_id = ?
+         ORDER BY cs.day_of_week, cs.period_slot`
+    ).all(session.id) as PlanAction[];
 
     return { session, actions };
 }

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { observeOpenAI } from '@langfuse/openai';
+import { z } from 'zod';
 
 let consecutiveFailures = 0;
 let circuitBreakerUntil: number | null = null;
@@ -129,10 +130,11 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<st
     throw new Error(`LLM调用失败: ${lastError?.message || '未知错误'}`);
 }
 
-export async function chatCompletionJSON(
+export async function chatCompletionJSON<T = Record<string, any>>(
     options: ChatCompletionOptions,
-    retries = 1
-): Promise<Record<string, any>> {
+    retries = 1,
+    schema?: z.ZodType<T>
+): Promise<T> {
     let lastError: Error | null = null;
 
     for (let i = 0; i <= retries; i++) {
@@ -140,14 +142,30 @@ export async function chatCompletionJSON(
             const content = await chatCompletion(options);
             const jsonMatch = content.match(/```(?:json)?\n?([\s\S]*?)\n?```/) ||
                               content.match(/\{[\s\S]*\}/);
+            
+            let parsed: any;
             if (jsonMatch) {
-                return JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+            } else {
+                parsed = JSON.parse(content);
             }
-            return JSON.parse(content);
+            
+            // Validate against schema if provided
+            if (schema) {
+                const result = schema.safeParse(parsed);
+                if (!result.success) {
+                    // Treat validation failure as a parsing error and continue to next attempt
+                    const validationErrors = result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+                    throw new Error(`JSON validation failed: ${validationErrors}`);
+                }
+                return result.data;
+            }
+            
+            return parsed;
         } catch (e) {
             lastError = e as Error;
         }
     }
 
-    throw new Error(`JSON解析失败: ${lastError?.message}`);
+    throw new Error(`JSON parsing/validation failed after ${retries + 1} attempts: ${lastError?.message || 'Unknown error'}`);
 }

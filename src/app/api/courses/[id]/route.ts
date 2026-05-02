@@ -3,6 +3,7 @@ import { ensureDatabaseReady } from '@/db/init';
 import * as dbCourses from '@/db/courses';
 import * as dbMemory from '@/db/memory';
 import { validateBody, CourseUpdateSchema } from '@/lib/validation';
+import { handleError } from '@/lib/errors';
 
 ensureDatabaseReady();
 
@@ -26,7 +27,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             data: dbCourses.getCourseById(Number(id)),
         });
     } catch (e) {
-        return NextResponse.json({ success: false, message: (e as Error).message }, { status: 500 });
+        const errorResult = handleError(e);
+        return NextResponse.json({ success: false, message: errorResult.message }, { status: errorResult.status });
     }
 }
 

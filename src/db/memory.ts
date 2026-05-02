@@ -1,4 +1,5 @@
 import { db } from './index';
+import { safeJsonParse } from './safe-json';
 
 export function generateCourseSnapshot(courseId: number): string {
     const course = db.prepare('SELECT * FROM course WHERE id = ?').get(courseId) as Record<string, any>;
@@ -17,15 +18,15 @@ export function generateCourseSnapshot(courseId: number): string {
         study_mode: course.study_mode,
         teacher_attitude: course.teacher_attitude,
         escape_difficulty: course.escape_difficulty,
-        rollcall_methods: JSON.parse(course.rollcall_methods || '[]'),
+        rollcall_methods: safeJsonParse(course.rollcall_methods || '[]', []),
         catch_tolerance: course.catch_tolerance_per_class,
         max_catch_limit: course.max_catch_limit,
         current_caught_count: course.current_caught_count,
-        rollcall_history: JSON.parse(course.rollcall_history || '[]'),
-        exam_weeks: course.exam_weeks ? JSON.parse(course.exam_weeks) : null,
+        rollcall_history: safeJsonParse(course.rollcall_history || '[]', []),
+        exam_weeks: course.exam_weeks ? safeJsonParse<Record<string, unknown>>(course.exam_weeks, {}) : null,
         notes: course.notes,
         schedules: schedules.map((s: any) => ({
-            weeks: JSON.parse(s.weeks),
+            weeks: safeJsonParse(s.weeks, []),
             day: s.day_of_week,
             period: s.period_slot,
         })),

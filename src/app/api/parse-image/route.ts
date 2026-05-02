@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseReady } from '@/db/init';
 import { parseScheduleImage } from '@/agents/parser';
-import { standardErrorResponse, ERR_CODES } from '@/lib/errors';
+import { standardErrorResponse, standardSanitizedErrorResponse, ERR_CODES } from '@/lib/errors';
 
 ensureDatabaseReady();
 
@@ -46,10 +46,9 @@ export async function POST(request: Request) {
             semester_end: result.semester_end,
         });
     } catch (e) {
-        return standardErrorResponse(
+        return standardSanitizedErrorResponse(
             ERR_CODES.INTERNAL_ERROR,
-            '图片处理失败',
-            (e as Error).message
+            e
         );
     }
 }

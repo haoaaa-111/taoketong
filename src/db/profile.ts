@@ -1,4 +1,5 @@
 import { db } from './index';
+import { safeJsonParse } from './safe-json';
 import type { UserProfile, UserConfig } from '@/types';
 
 const PROFILE_ID = 1;
@@ -10,7 +11,7 @@ export function getProfile(): UserProfile | null {
     const profile = row as Record<string, any>;
     return {
         ...profile,
-        skip_motivation: JSON.parse(profile.skip_motivation || '[]'),
+        skip_motivation: safeJsonParse(profile.skip_motivation || '[]', [] as string[]),
         escape_rush_accept: Boolean(profile.escape_rush_accept),
         has_completed_onboarding: Boolean(profile.has_completed_onboarding),
     } as UserProfile;

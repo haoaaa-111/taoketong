@@ -7,7 +7,8 @@ import * as dbProfile from '@/db/profile';
 import { generateSession } from '@/agents/orchestrator';
 import { validateBody, ImmediateFeedbackSchema } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { standardErrorResponse, ERR_CODES } from '@/lib/errors';
+import { standardErrorResponse, standardSanitizedErrorResponse, ERR_CODES } from '@/lib/errors';
+import { db } from '@/db';
 
 ensureDatabaseReady();
 
@@ -24,17 +25,22 @@ export async function POST(request: NextRequest) {
 
         const { session_id, decision, adjustment_notes } = validation.data;
 
-        dbFeedback.insertImmediateFeedback({
-            session_id,
-            decision,
-            adjustment_notes: adjustment_notes ?? null,
-        });
-
         if (decision === 'rejected') {
-            const allSnapshots = dbMemory.getAllCourseSnapshots();
-            for (const s of allSnapshots) {
-                dbMemory.updateCourseMemory(s.courseId);
-            }
+            // Wrap feedback insertion and course memory updates in a transaction
+            const transaction = db.transaction(() => {
+                dbFeedback.insertImmediateFeedback({
+                    session_id,
+                    decision,
+                    adjustment_notes: adjustment_notes ?? null,
+                });
+                
+                const allSnapshots = dbMemory.getAllCourseSnapshots();
+                for (const s of allSnapshots) {
+                    dbMemory.updateCourseMemory(s.courseId);
+                }
+            });
+            
+            transaction();
 
             const result = await generateSession({
                 adjustment_notes: adjustment_notes ?? undefined,
@@ -48,16 +54,26 @@ export async function POST(request: NextRequest) {
         }
 
         if (decision === 'accepted') {
-            dbSessions.acceptSession(session_id);
-            dbProfile.updateProfile({ has_completed_onboarding: true });
+            // Wrap feedback insertion, session acceptance, and profile update in a transaction
+            const transaction = db.transaction(() => {
+                dbFeedback.insertImmediateFeedback({
+                    session_id,
+                    decision,
+                    adjustment_notes: adjustment_notes ?? null,
+                });
+
+                dbSessions.acceptSession(session_id);
+                dbProfile.updateProfile({ has_completed_onboarding: true });
+            });
+            
+            transaction();
         }
 
         return NextResponse.json({ success: true });
     } catch (e) {
-        return standardErrorResponse(
+        return standardSanitizedErrorResponse(
             ERR_CODES.INTERNAL_ERROR,
-            '反馈处理失败',
-            (e as Error).message
+            e
         );
     }
 }

@@ -6,7 +6,8 @@ import * as dbCourses from '@/db/courses';
 import { generateSession } from '@/agents/orchestrator';
 import { validateBody, WeeklyFeedbackSchema } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { standardErrorResponse, ERR_CODES } from '@/lib/errors';
+import { standardErrorResponse, standardSanitizedErrorResponse, ERR_CODES, handleError } from '@/lib/errors';
+import { db } from '@/db';
 
 ensureDatabaseReady();
 
@@ -23,31 +24,36 @@ export async function POST(request: NextRequest) {
 
         const data = validation.data;
 
-        if (data.was_caught && data.caught_courses?.length) {
-            for (const courseId of data.caught_courses) {
-                const course = dbCourses.getCourseById(courseId);
-                if (course) {
-                    dbCourses.updateCourse(courseId, {
-                        current_caught_count: course.course.current_caught_count + 1,
-                    });
+        // Wrap all DB operations in transaction to maintain consistency
+        const transaction = db.transaction(() => {
+            if (data.was_caught && data.caught_courses?.length) {
+                for (const courseId of data.caught_courses) {
+                    const course = dbCourses.getCourseById(courseId);
+                    if (course) {
+                        dbCourses.updateCourse(courseId, {
+                            current_caught_count: course.course.current_caught_count + 1,
+                        });
+                    }
                 }
             }
-        }
 
-        const allSnapshots = dbMemory.getAllCourseSnapshots();
-        for (const s of allSnapshots) {
-            dbMemory.updateCourseMemory(s.courseId);
-        }
+            const allSnapshots = dbMemory.getAllCourseSnapshots();
+            for (const s of allSnapshots) {
+                dbMemory.updateCourseMemory(s.courseId);
+            }
 
-        dbFeedback.insertWeeklyFeedback({
-            session_id: data.session_id,
-            rating: data.rating ?? null,
-            was_caught: data.was_caught ?? false,
-            caught_courses: data.caught_courses ?? null,
-            actual_events: data.actual_events ?? null,
-            memory_updates: data.memory_updates ?? null,
-            comment: data.comment ?? null,
+            dbFeedback.insertWeeklyFeedback({
+                session_id: data.session_id,
+                rating: data.rating ?? null,
+                was_caught: data.was_caught ?? false,
+                caught_courses: data.caught_courses ?? null,
+                actual_events: data.actual_events ?? null,
+                memory_updates: data.memory_updates ?? null,
+                comment: data.comment ?? null,
+            });
         });
+
+        transaction();
 
         try {
             const result = await generateSession({});
@@ -57,16 +63,16 @@ export async function POST(request: NextRequest) {
                 new_actions: result.actions,
             });
         } catch (e) {
+            const errorResult = handleError(e);
             return NextResponse.json({
                 success: true,
-                message: '反馈已记录，方案生成失败: ' + (e as Error).message,
+                message: '反馈已记录，方案生成失败: ' + errorResult.message,
             });
         }
     } catch (e) {
-        return standardErrorResponse(
+        return standardSanitizedErrorResponse(
             ERR_CODES.INTERNAL_ERROR,
-            '周反馈处理失败',
-            (e as Error).message
+            e
         );
     }
 }

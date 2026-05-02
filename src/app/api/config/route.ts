@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { ensureDatabaseReady } from '@/db/init';
 import * as dbProfile from '@/db/profile';
 import { validateBody, ConfigUpdateSchema } from '@/lib/validation';
+import { handleError } from '@/lib/errors';
 
 ensureDatabaseReady();
 
@@ -18,6 +19,7 @@ export async function PUT(request: NextRequest) {
         dbProfile.updateConfig(validation.data);
         return NextResponse.json({ success: true });
     } catch (e) {
-        return NextResponse.json({ success: false, message: (e as Error).message }, { status: 500 });
+        const errorResult = handleError(e);
+        return NextResponse.json({ success: false, message: errorResult.message }, { status: errorResult.status });
     }
 }

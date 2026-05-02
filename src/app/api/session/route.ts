@@ -3,7 +3,7 @@ import { ensureDatabaseReady } from '@/db/init';
 import { generateSession } from '@/agents/orchestrator';
 import { validateBody, SessionSchema } from '@/lib/validation';
 import { checkRateLimit, getConfig } from '@/lib/rate-limit';
-import { standardErrorResponse, ERR_CODES } from '@/lib/errors';
+import { standardErrorResponse, standardSanitizedErrorResponse, ERR_CODES } from '@/lib/errors';
 
 ensureDatabaseReady();
 
@@ -30,10 +30,9 @@ export async function POST(request: NextRequest) {
             actions: result.actions,
         });
     } catch (e) {
-        return standardErrorResponse(
+        return standardSanitizedErrorResponse(
             ERR_CODES.INTERNAL_ERROR,
-            '方案生成失败',
-            (e as Error).message
+            e
         );
     }
 }

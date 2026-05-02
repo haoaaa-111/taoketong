@@ -21,4 +21,18 @@ export function initDatabase(): void {
     db.exec(schema);
 }
 
+export function closeDB(): void {
+    db.close();
+}
+
+export async function pingDB(): Promise<boolean> {
+    try {
+        db.prepare('SELECT 1').get();
+        return true;
+    } catch (error) {
+        console.error('Database ping failed:', error);
+        return false;
+    }
+}
+
 export { db };
