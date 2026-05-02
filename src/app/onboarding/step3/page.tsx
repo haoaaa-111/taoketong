@@ -1,0 +1,145 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import CourseEditor from '@/components/onboarding/CourseEditor';
+
+interface ParsedCourse {
+    name: string;
+    location: string;
+    teacher_name?: string;
+    credits?: number;
+    weeks: number[];
+    day_of_week: number;
+    period_slot: string;
+}
+
+export default function OnboardingStep3() {
+    const router = useRouter();
+    const [courses, setCourses] = useState<ParsedCourse[]>([]);
+    const [courseData, setCourseData] = useState<Record<string, any>>({});
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const step1Data = localStorage.getItem('onboarding_step1');
+        if (!step1Data) {
+            router.push('/onboarding/step1');
+            return;
+        }
+        setCourses(JSON.parse(step1Data).courses);
+    }, [router]);
+
+    const handleCourseChange = (courseName: string, data: any) => {
+        setCourseData(prev => ({ ...prev, [courseName]: data }));
+    };
+
+    const handleSubmit = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            for (const course of courses) {
+                const data = courseData[course.name] || {};
+                const rollcallMethods = data.rollcall_methods || [];
+                const examWeeks = data.exam_weeks || {};
+
+                const courseRes = await fetch('/api/courses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: course.name,
+                        location: course.location,
+                        teacher_name: course.teacher_name || null,
+                        credits: course.credits || null,
+                        course_type: data.course_type || '不确定',
+                        study_mode: data.study_mode || '自学',
+                        teacher_attitude: data.teacher_attitude || '不确定',
+                        escape_difficulty: data.escape_difficulty || null,
+                        rollcall_methods: rollcallMethods,
+                        catch_tolerance_per_class: data.catch_tolerance_per_class ?? 5,
+                        max_catch_limit: data.max_catch_limit ?? 3,
+                        exam_weeks: Object.keys(examWeeks).length > 0 ? examWeeks : null,
+                        notes: data.notes || null,
+                    }),
+                });
+
+                const courseResult = await courseRes.json();
+                const courseId = courseResult.id;
+
+                const schedules = data.schedules?.length > 0 ? data.schedules : [
+                    { weeks: course.weeks, day_of_week: course.day_of_week, period_slot: course.period_slot }
+                ];
+
+                for (const schedule of schedules) {
+                    await fetch('/api/courses', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ schedule: true, course_id: courseId, weeks: schedule.weeks, day_of_week: schedule.day_of_week, period_slot: schedule.period_slot }),
+                    });
+                }
+            }
+
+            const sessionRes = await fetch('/api/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adjustment_notes: '首次方案生成' }),
+            });
+
+            if (sessionRes.ok) {
+                localStorage.removeItem('onboarding_step1');
+                localStorage.removeItem('onboarding_step2');
+                router.push('/schedule');
+            } else {
+                const data = await sessionRes.json();
+                setError(data.message || '方案生成失败');
+            }
+        } catch (e) {
+            setError('网络错误: ' + (e as Error).message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-2xl font-bold mb-4">🤖 AI 正在生成方案...</div>
+                    <div className="text-gray-400">这可能需要 30-60 秒，请耐心等待</div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-950 text-gray-100 py-12 px-4">
+            <div className="max-w-4xl mx-auto space-y-8">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2">课程校对</h1>
+                    <p className="text-gray-400">请逐门确认课程信息，每门课程的详细信息影响后续方案质量</p>
+                </div>
+
+                {courses.map((course, i) => (
+                    <CourseEditor
+                        key={i}
+                        course={course}
+                        onChange={(data) => handleCourseChange(course.name, data)}
+                    />
+                ))}
+
+                {error && (
+                    <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300">
+                        {error}
+                    </div>
+                )}
+
+                <div className="flex justify-end">
+                    <button onClick={handleSubmit} className="btn btn-primary text-lg px-8 py-3">
+                        完成校对并生成方案
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
