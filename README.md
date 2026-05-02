@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 逃课通（SkipClass）
 
-## Getting Started
+> AI 驱动的个性化逃课方案生成器
 
-First, run the development server:
+## 功能特性
+
+- 📸 **课表图片解析**：上传课表截图，AI 自动提取课程信息
+- 🧠 **个性化画像**：根据你的逃课动机、频率偏好生成专属方案
+- 🤖 **AI 智能排课**：综合考虑点名方式、老师风格、历史数据生成大胆方案
+- ✅ **反馈闭环**：方案接受/打回/周后回顾，持续优化方案质量
+- 🔒 **隐私优先**：所有数据存储在本地 SQLite，不上传任何信息
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 框架 | Next.js 15 (App Router) |
+| 语言 | TypeScript (Strict Mode) |
+| 数据库 | SQLite (better-sqlite3) |
+| LLM | OpenAI 兼容 API |
+| UI | React + TailwindCSS（深色模式） |
+
+## 快速开始
+
+### 环境要求
+
+- Node.js 20+
+- 支持 OpenAI 兼容 API 的 LLM 服务
+
+### 安装
 
 ```bash
+# 1. 克隆/下载项目
+cd skip-class
+
+# 2. 安装依赖
+npm install
+
+# 3. 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local，填写 LLM API Key
+
+# 4. 启动开发服务器
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 环境变量
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+# LLM API 配置（必填）
+LLM_API_KEY=your-api-key-here
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 首次使用
 
-## Learn More
+1. 打开浏览器访问 `http://localhost:3000`
+2. 首次向导会引导你完成：
+   - 课表图片导入
+   - 用户画像设置
+   - 课程信息校对
+3. 完成后 AI 会自动生成首份方案
 
-To learn more about Next.js, take a look at the following resources:
+### 生产环境
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm run start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 数据
 
-## Deploy on Vercel
+所有数据存储在 `./data/skipclass.db`，这是唯一的数据文件，可备份此文件进行迁移。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
