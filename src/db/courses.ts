@@ -1,6 +1,27 @@
 import { db } from './index';
 import type { Course, CourseSchedule, CourseWithSchedules } from '@/types';
 
+const ALLOWED_UPDATE_COLUMNS = [
+    'name', 'location', 'teacher_name', 'credits', 'course_type',
+    'study_mode', 'teacher_attitude', 'escape_difficulty',
+    'rollcall_methods', 'rollcall_history', 'catch_tolerance_per_class',
+    'max_catch_limit', 'current_caught_count', 'exam_weeks', 'notes',
+] as const;
+
+const ALLOWED_INSERT_COLUMNS = [
+    'name', 'location', 'teacher_name', 'credits', 'course_type',
+    'study_mode', 'teacher_attitude', 'escape_difficulty',
+    'rollcall_methods', 'rollcall_history', 'catch_tolerance_per_class',
+    'max_catch_limit', 'current_caught_count', 'exam_weeks', 'notes',
+] as const;
+
+function validateColumns(columns: string[], allowed: readonly string[]): void {
+    const invalid = columns.filter(c => !(allowed as readonly string[]).includes(c));
+    if (invalid.length > 0) {
+        throw new Error(`不允许的列名: ${invalid.join(', ')}`);
+    }
+}
+
 export function getAllCoursesWithSchedules(): CourseWithSchedules[] {
     const courses = db.prepare('SELECT * FROM course').all() as Course[];
     return courses.map(course => ({
@@ -26,6 +47,8 @@ export function updateCourse(id: number, data: Partial<Course>): void {
     const values = entries.map(([_, v]) => v);
     if (columns.length === 0) return;
 
+    validateColumns(columns, ALLOWED_UPDATE_COLUMNS);
+
     // JSON 字段需要序列化
     const jsonFields = ['rollcall_methods', 'rollcall_history', 'exam_weeks'];
     const finalValues = values.map((v, i) => {
@@ -46,6 +69,8 @@ export function deleteCourse(id: number): void {
 
 export function insertCourse(data: Omit<Course, 'id' | 'created_at' | 'updated_at'>): number {
     const keys = Object.keys(data);
+    validateColumns(keys, ALLOWED_INSERT_COLUMNS);
+
     const placeholders = keys.map(() => '?');
     const values = Object.values(data);
 

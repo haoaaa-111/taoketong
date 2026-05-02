@@ -5,12 +5,13 @@ import { modelCourseRisk } from './modeler';
 import { generatePlan } from './supervisor';
 import type { PlanAction } from '@/types';
 import { addDays, formatISO } from 'date-fns';
+import { wrapUserInput, sanitizeForPrompt } from '@/lib/prompt-safety';
 
 export interface SessionInput {
     adjustment_notes?: string;
     constraints?: {
-        skip_course_ids: number[];
-        must_attend_ids: number[];
+        skip_course_ids?: number[];
+        must_attend_ids?: number[];
     };
 }
 
@@ -48,10 +49,10 @@ export async function generateSession(
     }
 
     if (input.adjustment_notes) {
-        prompt += `[调整建议]\n${input.adjustment_notes}\n\n`;
+        prompt += `[调整建议]\n${wrapUserInput(input.adjustment_notes)}\n\n`;
     }
     if (input.constraints) {
-        prompt += `[约束]\n${JSON.stringify(input.constraints)}\n\n`;
+        prompt += `[约束]\n${sanitizeForPrompt(JSON.stringify(input.constraints))}\n\n`;
     }
 
     prompt += '[生成指令]\n以上课程信息，请生成方案。';
