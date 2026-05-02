@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ScheduleGrid from '@/components/schedule/ScheduleGrid';
+import FeedbackActions from '@/components/schedule/FeedbackActions';
+import WeeklyFeedback from '@/components/layout/WeeklyFeedback';
 
 interface PlanAction {
     id: number;
@@ -121,11 +123,22 @@ export default function SchedulePage() {
                     <span className="px-3 py-1 rounded-lg bg-gray-700 text-gray-400 text-sm">— 空</span>
                 </div>
 
-                <div className="mt-8 card flex flex-wrap justify-center gap-4">
-                    <button className="btn btn-secondary">😤 不满意·打回重做</button>
-                    <button className="btn btn-primary">✅ 接受方案</button>
-                    <button className="btn btn-secondary">📢 补充情报</button>
-                </div>
+                {session && (
+                    <FeedbackActions
+                        sessionId={session.id}
+                        onRegenerate={(result) => {
+                            if (result.new_actions) {
+                                setActions(result.new_actions);
+                                setSession({ ...session, id: result.new_session_id });
+                            } else {
+                                window.location.reload();
+                            }
+                        }}
+                        onAccept={() => {
+                            window.location.reload();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

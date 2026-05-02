@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ensureDatabaseReady } from '@/db/init';
+import Navbar from '@/components/layout/Navbar';
 
 ensureDatabaseReady();
 
@@ -17,6 +18,7 @@ export default function RootLayout({
     return (
         <html lang="zh-CN" className="dark">
             <body className="min-h-screen bg-gray-950 text-gray-100">
+                <Navbar />
                 {children}
             </body>
         </html>
