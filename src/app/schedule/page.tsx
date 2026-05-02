@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ScheduleGrid from '@/components/schedule/ScheduleGrid';
-import { DAY_NAMES } from '@/types';
 
 interface PlanAction {
     id: number;

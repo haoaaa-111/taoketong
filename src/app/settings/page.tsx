@@ -19,7 +19,6 @@ interface Profile {
 export default function SettingsPage() {
     const [config, setConfig] = useState<Config | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
-    const [saving, setSaving] = useState(false);
     const [confirmReset, setConfirmReset] = useState(false);
 
     useEffect(() => {
@@ -33,13 +32,11 @@ export default function SettingsPage() {
     }, []);
 
     const saveConfig = useCallback(async (updates: Partial<Config>) => {
-        setSaving(true);
         await fetch('/api/config', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates),
         });
-        setSaving(false);
         window.location.reload();
     }, []);
 
