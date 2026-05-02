@@ -19,11 +19,8 @@ export interface SessionInput {
 export async function generateSession(
     input: SessionInput
 ): Promise<{ session_id: number; actions: PlanAction[] }> {
-    // 1. 更新所有课程记忆
+    // 1. 获取所有课程快照（仅读取，不写入）
     const courses = dbMemory.getAllCourseSnapshots();
-    for (const c of courses) {
-        dbMemory.updateCourseMemory(c.courseId);
-    }
 
     // 2. 获取用户画像
     const profile = dbProfile.ensureProfileExists();
@@ -102,6 +99,12 @@ export async function generateSession(
             });
             return { id, session_id: sessionId, schedule_id: a.schedule_id, action: a.action as PlanAction['action'], reason: a.reason };
         });
+
+        // 更新课程记忆（原子操作：保证 memory 与 session 数据一致性）
+        const courseIds = courses.map(c => c.courseId);
+        for (const c of courseIds) {
+            dbMemory.updateCourseMemory(c);
+        }
 
         return { session_id: sessionId, actions };
     });
