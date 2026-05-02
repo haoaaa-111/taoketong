@@ -1,0 +1,103 @@
+import * as dbMemory from '@/db/memory';
+import * as dbSessions from '@/db/sessions';
+import * as dbProfile from '@/db/profile';
+import { modelCourseRisk } from './modeler';
+import { generatePlan } from './supervisor';
+import type { PlanAction } from '@/types';
+import { addDays, formatISO } from 'date-fns';
+
+export interface SessionInput {
+    adjustment_notes?: string;
+    constraints?: {
+        skip_course_ids: number[];
+        must_attend_ids: number[];
+    };
+}
+
+export async function generateSession(
+    input: SessionInput
+): Promise<{ session_id: number; actions: PlanAction[] }> {
+    // 1. 更新所有课程记忆
+    const courses = dbMemory.getAllCourseSnapshots();
+    for (const c of courses) {
+        dbMemory.updateCourseMemory(c.courseId);
+    }
+
+    // 2. 获取用户画像
+    const profile = dbProfile.ensureProfileExists();
+    const config = dbProfile.ensureConfigExists();
+
+    // 3. 对每门课程进行风险建模
+    const riskResults: Record<number, { risk_level: string; risk_reason: string; next_caught_probability: number }> = {};
+    for (const c of courses) {
+        const risk = await modelCourseRisk(c.snapshot);
+        riskResults[c.courseId] = risk;
+    }
+
+    // 4. 拼接 Supervisor 的 prompt 上下文
+    let prompt = `[用户画像]\n${JSON.stringify(profile, null, 2)}\n\n`;
+    prompt += `[学期信息]\n当前第${config.current_week}周，周${config.current_day_of_week}\n`;
+    prompt += `学期：${config.semester_start_date} 至 ${config.semester_end_date}\n\n`;
+
+    for (const c of courses) {
+        prompt += `[课程记忆快照 - ${JSON.parse(c.snapshot).name}]\n`;
+        prompt += `${c.snapshot}\n\n`;
+        if (riskResults[c.courseId]) {
+            prompt += `风险评估：${JSON.stringify(riskResults[c.courseId])}\n\n`;
+        }
+    }
+
+    if (input.adjustment_notes) {
+        prompt += `[调整建议]\n${input.adjustment_notes}\n\n`;
+    }
+    if (input.constraints) {
+        prompt += `[约束]\n${JSON.stringify(input.constraints)}\n\n`;
+    }
+
+    prompt += '[生成指令]\n以上课程信息，请生成方案。';
+
+    // 5. Supervisor 生成方案（最多重试 2 次）
+    let result: { actions: { schedule_id: number; action: string; reason: string }[] } | undefined;
+    let retries = 0;
+    while (retries <= 2) {
+        try {
+            result = await generatePlan(prompt);
+            if (result.actions && result.actions.length > 0) break;
+        } catch (e) {
+            // retry
+        }
+        retries++;
+    }
+
+    if (!result || !result.actions || result.actions.length === 0) {
+        throw new Error('方案生成失败');
+    }
+
+    // 6. 旧方案标记为 rejected
+    const latest = dbSessions.getLatestSession();
+    if (latest && latest.session.status === 'draft') {
+        dbSessions.rejectLatestSession();
+    }
+
+    // 7. 创建新方案
+    const startDate = new Date();
+    const endDate = addDays(startDate, (profile.plan_weeks || 1) * 7);
+
+    const sessionId = dbSessions.createSession({
+        plan_start_date: formatISO(startDate, { representation: 'date' }),
+        plan_end_date: formatISO(endDate, { representation: 'date' }),
+    });
+
+    // 8. 保存动作
+    const actions: PlanAction[] = result.actions.map(a => {
+        const id = dbSessions.insertAction({
+            session_id: sessionId,
+            schedule_id: a.schedule_id,
+            action: a.action as PlanAction['action'],
+            reason: a.reason,
+        });
+        return { id, session_id: sessionId, schedule_id: a.schedule_id, action: a.action as PlanAction['action'], reason: a.reason };
+    });
+
+    return { session_id: sessionId, actions };
+}
