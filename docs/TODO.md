@@ -20,3 +20,4 @@
   - **Step3**: 点名方式"添加"按钮修复（基于 rollcall_methods.map 渲染）；新增"自定义"点名方式；点名频率新增"几乎不点"；备注 placeholder 更新为详细提示 + ⭐重要标识；parser.md 添加 notes 权重标注；step3 按课程名合并提交
   - **Type**: 新增 ParsedSession, ParsedCourseGroup, SessionEntry, CourseGroup 类型
   - **DB**: schema 无需改动（rollcall_methods 为 JSON 字段，自由扩展）
+- [x] [滚动选择器/特殊课次修复] ScrollPicker 灵敏度+颜色优化，特殊课次类型添加修复 — @sisyphus | 2026-05-03

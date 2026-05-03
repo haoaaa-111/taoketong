@@ -43,15 +43,17 @@ export default function Step1CoursePreview({
     const [showAddCourse, setShowAddCourse] = useState(false);
     const [newCourse, setNewCourse] = useState({ name: '', weekDays: '', periodSlot: '早一' as const, weeks: '' });
 
+    const [customSessionTypes, setCustomSessionTypes] = useState<Set<string>>(new Set());
+
     const sessionGroups = useMemo(() => {
-        const allGroups = new Set<string>(['default']);
+        const allGroups = new Set<string>(['default', ...customSessionTypes]);
         for (const g of groups) {
             for (const s of g.sessions) {
                 allGroups.add(s.sessionGroup);
             }
         }
         return Array.from(allGroups);
-    }, [groups]);
+    }, [groups, customSessionTypes]);
 
     const updateGroup = (name: string, updated: CourseGroup) => {
         setGroups(prev => prev.map(g => g.name === name ? updated : g));
@@ -62,8 +64,11 @@ export default function Step1CoursePreview({
     };
 
     const addSessionGroup = (_courseName: string, typeName: string) => {
-        if (sessionGroups.includes(typeName)) return;
-        setGroups(prev => prev.map(g => g));
+        setCustomSessionTypes(prev => {
+            const next = new Set(prev);
+            next.add(typeName);
+            return next;
+        });
     };
 
     const handleAddCourse = () => {
