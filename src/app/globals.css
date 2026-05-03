@@ -29,3 +29,11 @@ body {
 ::-webkit-scrollbar-thumb {
     @apply bg-gray-700 rounded-full;
 }
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}

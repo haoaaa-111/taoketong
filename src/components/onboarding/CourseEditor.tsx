@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { COURSE_TYPES, STUDY_MODES, TEACHER_ATTITUDES, ESCAPE_DIFFICULTIES, ROLLCALL_METHODS, PERIOD_SLOTS, DAY_NAMES } from '@/types';
+import { COURSE_TYPES, STUDY_MODES, TEACHER_ATTITUDES, ESCAPE_DIFFICULTIES, ROLLCALL_METHODS, ROLLCALL_FREQUENCIES, DAY_NAMES } from '@/types';
 
 interface ParsedCourse {
     name: string;
@@ -18,7 +18,7 @@ interface CourseFormData {
     study_mode: string;
     teacher_attitude: string;
     escape_difficulty: string;
-    rollcall_methods: { method: string; frequency: string }[];
+    rollcall_methods: { method: string; frequency: string; customMethod?: string }[];
     catch_tolerance_per_class: number;
     max_catch_limit: number;
     exam_weeks: { mid?: number; final?: number };
@@ -56,17 +56,31 @@ export default function CourseEditor({
 
     const addRollcallMethod = () => {
         update({
-            rollcall_methods: [...form.rollcall_methods, { method: '', frequency: '偶尔' }],
+            rollcall_methods: [...form.rollcall_methods, { method: '', frequency: '几乎不点', customMethod: '' }],
         });
     };
 
+    const updateRollcallMethod = (idx: number, field: 'method' | 'frequency' | 'customMethod', value: string) => {
+        const methods = [...form.rollcall_methods];
+        methods[idx] = { ...methods[idx], [field]: value };
+        update({ rollcall_methods: methods });
+    };
+
+    const removeRollcallMethod = (idx: number) => {
+        const methods = form.rollcall_methods.filter((_, i) => i !== idx);
+        update({ rollcall_methods: methods });
+    };
+
+    const getEffectiveSchedule = () => {
+        if (form.schedules.length > 0) return form.schedules;
+        return [{ weeks: course.weeks, day_of_week: course.day_of_week, period_slot: course.period_slot }];
+    };
+
     const updateSchedule = (idx: number, field: string, value: any) => {
-        const schedules = form.schedules.length > 0 ? [...form.schedules] : [{ weeks: course.weeks, day_of_week: course.day_of_week, period_slot: course.period_slot }];
+        const schedules = getEffectiveSchedule();
         schedules[idx] = { ...schedules[idx], [field]: value };
         update({ schedules });
     };
-
-    const currentSchedules = form.schedules.length > 0 ? form.schedules : [{ weeks: course.weeks, day_of_week: course.day_of_week, period_slot: course.period_slot }];
 
     return (
         <div className="card space-y-6">
@@ -132,32 +146,45 @@ export default function CourseEditor({
             </div>
 
             <div>
-                <label className="text-gray-400 text-sm mb-1 block">点名方式</label>
-                {currentSchedules.map((s, idx) => (
+                <label className="text-gray-400 text-sm mb-2 block">点名方式</label>
+                {form.rollcall_methods.length === 0 && (
+                    <p className="text-xs text-gray-600 mb-2">点击+添加点名方式，AI 排课据此判断逃课风险</p>
+                )}
+                {form.rollcall_methods.map((rm, idx) => (
                     <div key={idx} className="flex gap-2 items-center mb-2">
+                        <div className="flex-1 min-w-0">
+                            <select
+                                value={rm.method}
+                                onChange={(e) => updateRollcallMethod(idx, 'method', e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100"
+                            >
+                                <option value="">选择...</option>
+                                {ROLLCALL_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                                <option value="custom">自定义...</option>
+                            </select>
+                            {rm.method === 'custom' && (
+                                <input
+                                    className="w-full mt-2 bg-gray-900 border border-yellow-700 rounded-lg px-3 py-2 text-sm text-gray-100"
+                                    placeholder="输入自定义点名方式"
+                                    value={rm.customMethod || ''}
+                                    onChange={(e) => updateRollcallMethod(idx, 'customMethod', e.target.value)}
+                                />
+                            )}
+                        </div>
                         <select
-                            value={form.rollcall_methods[idx]?.method || ''}
-                            onChange={(e) => {
-                                const methods = [...form.rollcall_methods];
-                                methods[idx] = { ...methods[idx], method: e.target.value };
-                                update({ rollcall_methods: methods });
-                            }}
-                            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100"
+                            value={rm.frequency || '几乎不点'}
+                            onChange={(e) => updateRollcallMethod(idx, 'frequency', e.target.value)}
+                            className="w-28 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100"
                         >
-                            <option value="">选择...</option>
-                            {ROLLCALL_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                            {ROLLCALL_FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
                         </select>
-                        <select
-                            value={form.rollcall_methods[idx]?.frequency || '偶尔'}
-                            onChange={(e) => {
-                                const methods = [...form.rollcall_methods];
-                                methods[idx] = { ...methods[idx], frequency: e.target.value };
-                                update({ rollcall_methods: methods });
-                            }}
-                            className="w-24 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100"
+                        <button
+                            type="button"
+                            onClick={() => removeRollcallMethod(idx)}
+                            className="text-red-400 hover:text-red-300 font-bold px-1"
                         >
-                            {['偶尔', '经常', '一直'].map(f => <option key={f} value={f}>{f}</option>)}
-                        </select>
+                            ×
+                        </button>
                     </div>
                 ))}
                 <button type="button" onClick={addRollcallMethod} className="text-sm text-blue-400 hover:text-blue-300">+ 添加点名方式</button>
@@ -195,22 +222,24 @@ export default function CourseEditor({
 
             <div>
                 <label className="text-gray-400 text-sm mb-1 block">排期修正（Parser 未能识别的周次信息）</label>
-                <input type="text" value={currentSchedules[0]?.weeks.join(',')}
+                <input type="text" value={getEffectiveSchedule()[0]?.weeks.join(',')}
                     onChange={(e) => {
-                        const weeks = e.target.value.split(',').map(Number).filter(n => !isNaN(n));
-                        updateSchedule(0, 'weeks', weeks);
+                        const weeks = e.target.value.split(/[，,、]/).map(Number).filter(n => !isNaN(n) && n > 0);
+                        updateSchedule(0, 'weeks', weeks.length > 0 ? weeks : [1]);
                     }}
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm"
                     placeholder="如: 1,2,3,5,6,7" />
             </div>
 
             <div>
-                <label className="text-gray-400 text-sm mb-1 block">备注</label>
+                <label className="text-gray-400 text-sm mb-1 block">
+                    备注 <span className="text-red-400 font-bold">⭐ 最重要</span>
+                </label>
                 <textarea
                     value={form.notes}
                     onChange={(e) => update({ notes: e.target.value })}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 resize-none h-20"
-                    placeholder="补充信息、手动修正等"
+                    className="w-full bg-gray-900 border border-yellow-800/50 focus:border-yellow-600 rounded-lg px-3 py-2 text-gray-100 resize-none h-28"
+                    placeholder="老师具体的点名习惯，性格怎么样，有没有交作业或者小测之类的，可以放心不去吗，有课程群吗，消息是不是只在课上说，老师给的资料/自己找的课方便自学吗，有不水的闭卷考试吗，点名具体的规则？"
                 />
             </div>
         </div>

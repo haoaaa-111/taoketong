@@ -27,7 +27,26 @@ export default function OnboardingStep3() {
             router.push('/onboarding/step1');
             return;
         }
-        setCourses(JSON.parse(step1Data).courses);
+        const parsed = JSON.parse(step1Data);
+        const rawCourses = parsed.courses;
+
+        if (rawCourses[0]?.sessions) {
+            const flat = rawCourses.flatMap((g: any) =>
+                g.sessions.map((s: any) => ({
+                    name: g.name,
+                    location: s.location || '',
+                    teacher_name: g.teacher_name,
+                    credits: g.credits,
+                    day_of_week: s.day_of_week,
+                    period_slot: s.period_slot,
+                    weeks: s.weeks,
+                    sessionGroup: s.sessionGroup || 'default',
+                }))
+            );
+            setCourses(flat);
+        } else {
+            setCourses(rawCourses);
+        }
     }, [router]);
 
     const handleCourseChange = (courseName: string, data: any) => {
@@ -39,8 +58,11 @@ export default function OnboardingStep3() {
         setError(null);
 
         try {
-            for (const course of courses) {
-                const data = courseData[course.name] || {};
+            const nameSet = new Set(courses.map(c => c.name));
+
+            for (const courseName of nameSet) {
+                const courseEntries = courses.filter(c => c.name === courseName);
+                const data = courseData[courseName] || {};
                 const rollcallMethods = data.rollcall_methods || [];
                 const examWeeks = data.exam_weeks || {};
 
@@ -48,10 +70,10 @@ export default function OnboardingStep3() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        name: course.name,
-                        location: course.location,
-                        teacher_name: course.teacher_name || null,
-                        credits: course.credits || null,
+                        name: courseName,
+                        location: courseEntries[0].location,
+                        teacher_name: courseEntries[0].teacher_name || null,
+                        credits: courseEntries[0].credits || null,
                         course_type: data.course_type || '不确定',
                         study_mode: data.study_mode || '自学',
                         teacher_attitude: data.teacher_attitude || '不确定',
@@ -67,15 +89,12 @@ export default function OnboardingStep3() {
                 const courseResult = await courseRes.json();
                 const courseId = courseResult.id;
 
-                const schedules = data.schedules?.length > 0 ? data.schedules : [
-                    { weeks: course.weeks, day_of_week: course.day_of_week, period_slot: course.period_slot }
-                ];
-
-                for (const schedule of schedules) {
+                for (const course of courseEntries) {
+                    const weeks = course.weeks || [1];
                     await fetch('/api/courses', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ schedule: true, course_id: courseId, weeks: schedule.weeks, day_of_week: schedule.day_of_week, period_slot: schedule.period_slot }),
+                        body: JSON.stringify({ schedule: true, course_id: courseId, weeks, day_of_week: course.day_of_week, period_slot: course.period_slot }),
                     });
                 }
             }

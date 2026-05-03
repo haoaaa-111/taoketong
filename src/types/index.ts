@@ -9,7 +9,7 @@ export const SESSION_STATUSES = ['draft', 'accepted', 'rejected'] as const;
 export const PERIOD_SLOTS = ['早一', '早二', '午一', '午二', '晚'] as const;
 export const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] as const;
 export const EVENT_TYPES = ['点名预警', '交作业', '调课', '补课', '其他'] as const;
-export const ROLLCALL_FREQUENCIES = ['偶尔', '经常', '一直'] as const;
+export const ROLLCALL_FREQUENCIES = ['几乎不点', '偶尔', '经常', '一直'] as const;
 
 export const ROLLCALL_METHODS = [
     '抽点', '全点名', '位置签到', '可截图扫码', '需到场扫码', '签名表签到',
@@ -169,3 +169,35 @@ export const PERIOD_TIME_DEFAULTS: Record<typeof PERIOD_SLOTS[number], { start: 
     '午二': { start: '16:00', end: '17:40' },
     '晚': { start: '19:00', end: '21:00' },
 };
+
+// === Parser 原始输出类型 ===
+export interface ParsedSession {
+    day_of_week: number;
+    period_slot: typeof PERIOD_SLOTS[number];
+    weeks: number[];
+    location: string;
+}
+
+export interface ParsedCourseGroup {
+    name: string;
+    teacher_name?: string;
+    credits?: number;
+    sessions: ParsedSession[];
+}
+
+// === Step1 课程分组类型（带 UI 状态字段）===
+export interface SessionEntry {
+    id: string;
+    day_of_week: number;
+    period_slot: typeof PERIOD_SLOTS[number];
+    weeks: number[];
+    location?: string;
+    sessionGroup: string;
+}
+
+export interface CourseGroup {
+    name: string;
+    teacher_name?: string;
+    credits?: number;
+    sessions: SessionEntry[];
+}
