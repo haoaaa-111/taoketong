@@ -136,6 +136,67 @@ export interface CourseWithSchedules {
     schedules: CourseSchedule[];
 }
 
+// === Snapshot v1 Types ===
+
+export interface SnapshotV1 {
+    course_id: number;
+    name: string;
+    meta: {
+        version: 1;
+        updated_at: string; // ISO 8601
+        total_observations: number;
+        confidence_score: number; // 0-1
+    };
+    schedules: ScheduleSnapshotV1[];
+    rollcall_model: RollcallModelV1;
+    caught_history: CaughtHistoryV1;
+    risk_signals: RiskSignalV1[];
+    memory_budget: MemoryBudgetV1;
+}
+
+export interface ScheduleSnapshotV1 {
+    schedule_id: number;
+    weeks: number[];
+    day: number; // 1=Mon, ..., 7=Sun
+    period: string; // e.g., "1-2"
+}
+
+export interface RollcallModelV1 {
+    primary_method: string;
+    frequency_model: {
+        type: 'poisson' | 'unknown';
+        lambda: number;
+        confidence_interval: [number, number];
+    };
+    pattern_detected: boolean;
+    last_observed_week: number;
+}
+
+export interface CaughtHistoryV1 {
+    total: number;
+    by_week: Record<string, number>;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    bayesian_posterior: {
+        alpha: number;
+        beta: number;
+        expected_probability: number;
+    };
+}
+
+export interface RiskSignalV1 {
+    type: string;
+    weeks?: number[];
+    severity: 'low' | 'medium' | 'high';
+    indicator?: string;
+    confidence?: number;
+}
+
+export interface MemoryBudgetV1 {
+    used_chars: number;
+    limit_chars: number; // default 3000
+    utilization_pct: number;
+}
+
 // === Period Slot 工具 ===
 export const PERIOD_TIME_DEFAULTS: Record<typeof PERIOD_SLOTS[number], { start: string; end: string }> = {
     '早一': { start: '08:00', end: '09:40' },
