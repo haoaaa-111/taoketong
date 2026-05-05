@@ -10,9 +10,9 @@ jest.mock('@/agents/supervisor', () => ({
 
 jest.mock('@/db/memory', () => ({
     getAllCourseSnapshots: jest.fn(() => [
-        { courseId: 1, snapshot: '{"name":"Course A"}' },
-        { courseId: 2, snapshot: '{"name":"Course B"}' },
-        { courseId: 3, snapshot: '{"name":"Course C"}' },
+        { course_id: 1, course_name: 'Course A', snapshot_data: '{"name":"Course A"}' },
+        { course_id: 2, course_name: 'Course B', snapshot_data: '{"name":"Course B"}' },
+        { course_id: 3, course_name: 'Course C', snapshot_data: '{"name":"Course C"}' },
     ]),
     updateCourseMemory: jest.fn(),
 }));
@@ -89,9 +89,9 @@ describe('Bug #5: Modeler failure isolation', () => {
 
     it('riskPromises pattern handles mixed success and failure', async () => {
         const courses = [
-            { courseId: 1, snapshot: 'good' },
-            { courseId: 2, snapshot: 'bad' },
-            { courseId: 3, snapshot: 'good2' },
+            { course_id: 1, course_name: 'Course 1', snapshot_data: 'good' },
+            { course_id: 2, course_name: 'Course 2', snapshot_data: 'bad' },
+            { course_id: 3, course_name: 'Course 3', snapshot_data: 'good2' },
         ];
 
         const mockModeler = (snapshot: string) => {
@@ -107,10 +107,10 @@ describe('Bug #5: Modeler failure isolation', () => {
 
         const riskPromises = courses.map(async (c) => {
             try {
-                const risk = await mockModeler(c.snapshot);
-                return { courseId: c.courseId, risk, error: null };
+                const risk = await mockModeler(c.snapshot_data);
+                return { courseId: c.course_id, risk, error: null };
             } catch (e) {
-                return { courseId: c.courseId, risk: DEFAULT_RISK, error: e };
+                return { courseId: c.course_id, risk: DEFAULT_RISK, error: e };
             }
         });
 
@@ -130,18 +130,18 @@ describe('Bug #5: Modeler failure isolation', () => {
 
     it('all courses failing should still produce results with defaults', async () => {
         const courses = [
-            { courseId: 1, snapshot: 'fail1' },
-            { courseId: 2, snapshot: 'fail2' },
+            { course_id: 1, course_name: 'Course 1', snapshot_data: 'fail1' },
+            { course_id: 2, course_name: 'Course 2', snapshot_data: 'fail2' },
         ];
 
         const mockModeler = (_snapshot: string) => Promise.reject(new Error('all fail'));
 
         const riskPromises = courses.map(async (c) => {
             try {
-                const risk = await mockModeler(c.snapshot);
-                return { courseId: c.courseId, risk, error: null };
+                const risk = await mockModeler(c.snapshot_data);
+                return { courseId: c.course_id, risk, error: null };
             } catch (e) {
-                return { courseId: c.courseId, risk: DEFAULT_RISK, error: e };
+                return { courseId: c.course_id, risk: DEFAULT_RISK, error: e };
             }
         });
 

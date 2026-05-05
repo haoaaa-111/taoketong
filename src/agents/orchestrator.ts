@@ -37,15 +37,15 @@ export async function generateSession(
     const riskPromises = courses.map(async (c) => {
         let risk: { risk_level: string; risk_reason: string; next_caught_probability: number };
         try {
-            risk = await modelCourseRisk(c.snapshot);
+            risk = await modelCourseRisk(c.snapshot_data);
         } catch (e) {
             console.warn(
-                `[Orchestrator] Modeler failed for course ${c.courseId}, using default risk`,
+                `[Orchestrator] Modeler failed for course ${c.course_id}, using default risk`,
                 e instanceof Error ? e.message : String(e)
             );
             risk = DEFAULT_RISK;
         }
-        return { courseId: c.courseId, risk };
+        return { courseId: c.course_id, risk };
     });
 
     const riskArray = await Promise.all(riskPromises);
@@ -63,10 +63,10 @@ export async function generateSession(
     prompt += `学期：${semesterStart} 至 ${semesterEnd}\n\n`;
 
     for (const c of courses) {
-        prompt += `[课程记忆快照 - ${JSON.parse(c.snapshot).name}]\n`;
-        prompt += `${c.snapshot}\n\n`;
-        if (riskResults[c.courseId]) {
-            prompt += `风险评估：${JSON.stringify(riskResults[c.courseId])}\n\n`;
+        prompt += `[课程记忆快照 - ${c.course_name}]\n`;
+        prompt += `${c.snapshot_data}\n\n`;
+        if (riskResults[c.course_id]) {
+            prompt += `风险评估：${JSON.stringify(riskResults[c.course_id])}\n\n`;
         }
     }
 
@@ -125,7 +125,7 @@ export async function generateSession(
         });
 
         // 更新课程记忆（原子操作：保证 memory 与 session 数据一致性）
-        const courseIds = courses.map(c => c.courseId);
+        const courseIds = courses.map(c => c.course_id);
         for (const c of courseIds) {
             dbMemory.updateCourseMemory(c);
         }

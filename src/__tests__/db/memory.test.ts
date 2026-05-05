@@ -17,6 +17,12 @@ describe('Bug #1: schedule_id in course snapshots', () => {
             INSERT INTO course_schedule (course_id, weeks, day_of_week, period_slot)
             VALUES (?, '[1,2,3,4]', 1, '早一')
         `).run(testCourseId);
+
+        const snapshot = generateCourseSnapshot(testCourseId);
+        db.prepare(`
+            INSERT INTO course_memory (course_id, snapshot_data)
+            VALUES (?, ?)
+        `).run(testCourseId, snapshot);
     });
 
     afterAll(() => {
@@ -57,11 +63,11 @@ describe('Bug #1: schedule_id in course snapshots', () => {
         const snapshots = getAllCourseSnapshots();
 
         // Find our test course in the results
-        const testSnapshot = snapshots.find(s => s.courseId === testCourseId);
+        const testSnapshot = snapshots.find(s => s.course_id === testCourseId);
         expect(testSnapshot).toBeDefined();
 
         if (testSnapshot) {
-            const data = JSON.parse(testSnapshot.snapshot);
+            const data = JSON.parse(testSnapshot.snapshot_data);
             expect(data.schedules.length).toBeGreaterThan(0);
             for (const schedule of data.schedules) {
                 expect(schedule).toHaveProperty('schedule_id');

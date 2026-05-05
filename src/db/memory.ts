@@ -69,12 +69,14 @@ export function generateCourseSnapshot(courseId: number): string {
     return JSON.stringify(parsed);
 }
 
-export function getAllCourseSnapshots(): { courseId: number; snapshot: string }[] {
-    const courses = db.prepare('SELECT id FROM course ORDER BY id').all() as { id: number }[];
-    return courses.map(course => ({
-        courseId: course.id,
-        snapshot: generateCourseSnapshot(course.id),
-    }));
+export function getAllCourseSnapshots(): { course_id: number; course_name: string; snapshot_data: string }[] {
+    const rows = db.prepare(`
+        SELECT cm.course_id, c.name as course_name, cm.snapshot_data
+        FROM course_memory cm
+        JOIN course c ON c.id = cm.course_id
+        ORDER BY cm.last_updated DESC
+    `).all() as { course_id: number; course_name: string; snapshot_data: string }[];
+    return rows;
 }
 
 export function updateCourseMemory(courseId: number): void {

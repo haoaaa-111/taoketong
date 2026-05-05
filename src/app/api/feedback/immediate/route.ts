@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
                 
                 const allSnapshots = dbMemory.getAllCourseSnapshots();
                 for (const s of allSnapshots) {
-                    dbMemory.updateCourseMemory(s.courseId);
+                    dbMemory.updateCourseMemory(s.course_id);
                 }
             });
             
