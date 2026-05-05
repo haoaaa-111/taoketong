@@ -29,7 +29,7 @@ export function getLatestSession(): { session: PlanSession; actions: PlanAction[
 
     const actions = db.prepare(
         `SELECT pa.* FROM plan_action pa
-         JOIN course_schedule cs ON pa.schedule_id = cs.id
+         LEFT JOIN course_schedule cs ON pa.schedule_id = cs.id
          WHERE pa.session_id = ?
          ORDER BY cs.day_of_week, cs.period_slot`
     ).all(session.id) as PlanAction[];
@@ -45,7 +45,7 @@ export function getLatestSessionWithActions(): { session: PlanSession; actions: 
 
     const actions = db.prepare(
         `SELECT pa.* FROM plan_action pa
-         JOIN course_schedule cs ON pa.schedule_id = cs.id
+         LEFT JOIN course_schedule cs ON pa.schedule_id = cs.id
          WHERE pa.session_id = ?
          ORDER BY cs.day_of_week, cs.period_slot`
     ).all(session.id) as PlanAction[];
