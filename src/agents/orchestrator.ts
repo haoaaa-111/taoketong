@@ -34,9 +34,13 @@ export async function generateSession(
     }
 
     // 4. 拼接 Supervisor 的 prompt 上下文
+    const currentWeek = config.current_week ?? 1;
+    const dayOfWeek = config.current_day_of_week ?? 1;
+    const semesterStart = config.semester_start_date ?? '未设置';
+    const semesterEnd = config.semester_end_date ?? '未设置';
     let prompt = `[用户画像]\n${JSON.stringify(profile, null, 2)}\n\n`;
-    prompt += `[学期信息]\n当前第${config.current_week}周，周${config.current_day_of_week}\n`;
-    prompt += `学期：${config.semester_start_date} 至 ${config.semester_end_date}\n\n`;
+    prompt += `[学期信息]\n当前第${currentWeek}周，周${dayOfWeek}\n`;
+    prompt += `学期：${semesterStart} 至 ${semesterEnd}\n\n`;
 
     for (const c of courses) {
         prompt += `[课程记忆快照 - ${JSON.parse(c.snapshot).name}]\n`;
