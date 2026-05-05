@@ -70,6 +70,8 @@ export interface ChatCompletionOptions {
     temperature?: number;
     maxTokens?: number;
     imageBase64?: string;
+    schema?: z.ZodType<any>;
+    circuitKey?: string;
 }
 
 export async function chatCompletion(options: ChatCompletionOptions): Promise<string> {
@@ -132,8 +134,7 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<st
 
 export async function chatCompletionJSON<T = Record<string, any>>(
     options: ChatCompletionOptions,
-    retries = 1,
-    schema?: z.ZodType<T>
+    retries = 1
 ): Promise<T> {
     let lastError: Error | null = null;
 
@@ -150,18 +151,17 @@ export async function chatCompletionJSON<T = Record<string, any>>(
                 parsed = JSON.parse(content);
             }
             
-            // Validate against schema if provided
+            const schema = options.schema;
             if (schema) {
                 const result = schema.safeParse(parsed);
                 if (!result.success) {
-                    // Treat validation failure as a parsing error and continue to next attempt
                     const validationErrors = result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
                     throw new Error(`JSON validation failed: ${validationErrors}`);
                 }
-                return result.data;
+                return result.data as T;
             }
             
-            return parsed;
+            return parsed as T;
         } catch (e) {
             lastError = e as Error;
         }
