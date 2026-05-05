@@ -8,7 +8,7 @@ jest.mock('@/lib/llm', () => ({
                 fields_to_update: { rollcall_method: '签到', teacher_attitude: '严抓' },
                 confidence: 0.85,
                 requires_verification: false,
-                update_type: 'fact',
+                update_type: 'fact' as const,
             },
         ],
         summary: 'Updated rollcall info for 高等数学',
