@@ -26,11 +26,31 @@ export async function generateSession(
     const profile = dbProfile.ensureProfileExists();
     const config = dbProfile.ensureConfigExists();
 
-    // 3. 对每门课程进行风险建模
+    // 3. 对每门课程进行风险建模（并行 + 失败隔离）
+    const DEFAULT_RISK = {
+        risk_level: '中风险' as const,
+        risk_reason: '无法获取风险评估（降级默认值）',
+        next_caught_probability: 0.3,
+    };
+
     const riskResults: Record<number, { risk_level: string; risk_reason: string; next_caught_probability: number }> = {};
-    for (const c of courses) {
-        const risk = await modelCourseRisk(c.snapshot);
-        riskResults[c.courseId] = risk;
+    const riskPromises = courses.map(async (c) => {
+        let risk: { risk_level: string; risk_reason: string; next_caught_probability: number };
+        try {
+            risk = await modelCourseRisk(c.snapshot);
+        } catch (e) {
+            console.warn(
+                `[Orchestrator] Modeler failed for course ${c.courseId}, using default risk`,
+                e instanceof Error ? e.message : String(e)
+            );
+            risk = DEFAULT_RISK;
+        }
+        return { courseId: c.courseId, risk };
+    });
+
+    const riskArray = await Promise.all(riskPromises);
+    for (const r of riskArray) {
+        riskResults[r.courseId] = r.risk;
     }
 
     // 4. 拼接 Supervisor 的 prompt 上下文
