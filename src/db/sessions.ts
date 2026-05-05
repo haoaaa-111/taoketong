@@ -31,7 +31,7 @@ export function getLatestSession(): { session: PlanSession; actions: PlanAction[
         `SELECT pa.* FROM plan_action pa
          LEFT JOIN course_schedule cs ON pa.schedule_id = cs.id
          WHERE pa.session_id = ?
-         ORDER BY cs.day_of_week, cs.period_slot`
+         ORDER BY COALESCE(cs.day_of_week, 99), COALESCE(cs.period_slot, 'zzz')`
     ).all(session.id) as PlanAction[];
 
     return { session, actions };

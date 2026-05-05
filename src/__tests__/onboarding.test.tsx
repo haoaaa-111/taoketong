@@ -1,4 +1,3 @@
-/// <reference types="@jest/globals" />
 import { render, screen, fireEvent } from '@testing-library/react';
 import Step1CourseGroup from '@/components/onboarding/Step1CourseGroup';
 import CourseEditor from '@/components/onboarding/CourseEditor';

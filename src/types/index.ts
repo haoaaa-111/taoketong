@@ -131,6 +131,11 @@ export interface CourseMemory {
     last_updated: string;
 }
 
+export interface CourseWithSchedules {
+    course: Course;
+    schedules: CourseSchedule[];
+}
+
 // === Period Slot 工具 ===
 export const PERIOD_TIME_DEFAULTS: Record<typeof PERIOD_SLOTS[number], { start: string; end: string }> = {
     '早一': { start: '08:00', end: '09:40' },

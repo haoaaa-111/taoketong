@@ -4,7 +4,6 @@ import { db, initDatabase } from '@/db';
 
 describe('Bug #1: schedule_id in course snapshots', () => {
     let testCourseId: number;
-    let testScheduleId: number;
 
     beforeAll(() => {
         initDatabase();
@@ -14,11 +13,10 @@ describe('Bug #1: schedule_id in course snapshots', () => {
         `).run();
         testCourseId = courseResult.lastInsertRowid as number;
 
-        const scheduleResult = db.prepare(`
+        db.prepare(`
             INSERT INTO course_schedule (course_id, weeks, day_of_week, period_slot)
             VALUES (?, '[1,2,3,4]', 1, '早一')
         `).run(testCourseId);
-        testScheduleId = scheduleResult.lastInsertRowid as number;
     });
 
     afterAll(() => {

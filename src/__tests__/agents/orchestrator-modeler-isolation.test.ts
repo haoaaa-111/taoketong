@@ -61,7 +61,7 @@ describe('Bug #5: Modeler failure isolation', () => {
         const { modelCourseRisk } = await import('@/agents/modeler');
         const { generatePlan } = await import('@/agents/supervisor');
 
-        (modelCourseRisk as jest.Mock).mockImplementation((snapshot: string) => {
+        (modelCourseRisk as jest.Mock).mockImplementation((snapshot: any) => {
             if (snapshot.includes('Course B')) {
                 return Promise.reject(new Error('Simulated modeler failure'));
             }
@@ -77,7 +77,7 @@ describe('Bug #5: Modeler failure isolation', () => {
                 { schedule_id: 1, action: '逃课', reason: 'reason1' },
                 { schedule_id: 2, action: '上课', reason: 'reason2' },
             ],
-        });
+        } as any);
 
         const { generateSession } = await import('@/agents/orchestrator');
 
@@ -134,7 +134,7 @@ describe('Bug #5: Modeler failure isolation', () => {
             { courseId: 2, snapshot: 'fail2' },
         ];
 
-        const mockModeler = () => Promise.reject(new Error('all fail'));
+        const mockModeler = (_snapshot: string) => Promise.reject(new Error('all fail'));
 
         const riskPromises = courses.map(async (c) => {
             try {
