@@ -1,4 +1,3 @@
-/// <reference types="@jest/globals" />
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { generateCourseSnapshot, getAllCourseSnapshots } from '@/db/memory';
 import { db, initDatabase } from '@/db';

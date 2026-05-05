@@ -1,4 +1,3 @@
-/// <reference types="@jest/globals" />
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { db, initDatabase } from '@/db';
 import { getLatestSession } from '@/db/sessions';

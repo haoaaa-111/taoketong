@@ -1,4 +1,3 @@
-/// <reference types="@jest/globals" />
 import { describe, it, expect, jest } from '@jest/globals';
 
 jest.mock('@/agents/modeler', () => ({
