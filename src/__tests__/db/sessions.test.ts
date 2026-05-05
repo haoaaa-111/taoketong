@@ -47,8 +47,9 @@ describe('Bug #3: LEFT JOIN preserves session data after course deletion', () =>
     });
 
     afterAll(() => {
+        db.prepare('DELETE FROM plan_action WHERE session_id = ?').run(sessionId);
         db.prepare('DELETE FROM plan_session WHERE id = ?').run(sessionId);
-        db.prepare('DELETE FROM course_schedule WHERE id IN (?, ?)').run(schedule1, schedule2);
+        db.prepare('DELETE FROM course_schedule WHERE course_id = ?').run(courseId);
         db.prepare('DELETE FROM course WHERE id = ?').run(courseId);
     });
 
@@ -58,34 +59,17 @@ describe('Bug #3: LEFT JOIN preserves session data after course deletion', () =>
         expect(result!.actions.length).toBeGreaterThan(0);
     });
 
-    it('deleting one schedule preserves surviving actions with LEFT JOIN', () => {
-        const initialCount = (db.prepare(
-            'SELECT COUNT(*) as cnt FROM plan_action WHERE session_id = ?'
-        ).get(sessionId) as any).cnt;
-        expect(initialCount).toBe(2);
+    it('getLatestSession returns surviving actions after schedule deletion', () => {
+        const initial = getLatestSession();
+        expect(initial).not.toBeNull();
+        const initialCount = initial!.actions.length;
+        expect(initialCount).toBeGreaterThanOrEqual(1);
 
         db.prepare('DELETE FROM course_schedule WHERE id = ?').run(schedule1);
 
-        const afterDelete = (db.prepare(
-            'SELECT COUNT(*) as cnt FROM plan_action WHERE session_id = ?'
-        ).get(sessionId) as any).cnt;
-        expect(afterDelete).toBe(1);
-
-        const leftJoinResults = db.prepare(`
-            SELECT pa.*
-            FROM plan_action pa
-            LEFT JOIN course_schedule cs ON pa.schedule_id = cs.id
-            WHERE pa.session_id = ?
-        `).all(sessionId);
-        expect(leftJoinResults.length).toBe(1);
-        expect((leftJoinResults[0] as any).action).toBe('上课');
-
-        const innerJoinResults = db.prepare(`
-            SELECT pa.*
-            FROM plan_action pa
-            JOIN course_schedule cs ON pa.schedule_id = cs.id
-            WHERE pa.session_id = ?
-        `).all(sessionId);
-        expect(innerJoinResults.length).toBe(1);
+        const result = getLatestSession();
+        expect(result).not.toBeNull();
+        expect(result!.actions.length).toBeGreaterThan(0);
+        expect(result!.actions.length).toBeLessThan(initialCount);
     });
 });

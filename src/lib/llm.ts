@@ -155,8 +155,13 @@ export async function chatCompletionJSON<T = Record<string, any>>(
             if (schema) {
                 const result = schema.safeParse(parsed);
                 if (!result.success) {
-                    const validationErrors = result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
-                    throw new Error(`JSON validation failed: ${validationErrors}`);
+                    throw new LLMOutputValidationError(
+                        `LLM output failed Zod validation for circuit: ${options.circuitKey || 'unknown'}`,
+                        {
+                            zodErrors: result.error.issues,
+                            receivedData: parsed,
+                        }
+                    );
                 }
                 return result.data as T;
             }
@@ -168,4 +173,14 @@ export async function chatCompletionJSON<T = Record<string, any>>(
     }
 
     throw new Error(`JSON parsing/validation failed after ${retries + 1} attempts: ${lastError?.message || 'Unknown error'}`);
+}
+
+export class LLMOutputValidationError extends Error {
+    constructor(
+        message: string,
+        public readonly details: Record<string, unknown>
+    ) {
+        super(message);
+        this.name = 'LLMOutputValidationError';
+    }
 }

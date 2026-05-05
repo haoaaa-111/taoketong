@@ -131,44 +131,6 @@ export interface CourseMemory {
     last_updated: string;
 }
 
-// === 快照类型 ===
-export interface ScheduleSnapshot {
-    schedule_id: number;
-    weeks: number[];
-    day: number;
-    period: string;
-}
-
-// === 输入/输出类型 ===
-export interface ParsedCourse {
-    name: string;
-    location: string;
-    teacher_name?: string;
-    credits?: number;
-    weeks: number[];
-    day_of_week: number;
-    period_slot: typeof PERIOD_SLOTS[number];
-}
-
-export interface CourseWithSchedules {
-    course: Course;
-    schedules: CourseSchedule[];
-}
-
-export interface SessionResult {
-    success: boolean;
-    session_id: number;
-    actions: PlanAction[];
-    message?: string;
-}
-
-export interface ModelerOutput {
-    course_id: number;
-    risk_level: typeof RISK_LEVELS[number];
-    risk_reason: string;
-    next_caught_probability: number;
-}
-
 // === Period Slot 工具 ===
 export const PERIOD_TIME_DEFAULTS: Record<typeof PERIOD_SLOTS[number], { start: string; end: string }> = {
     '早一': { start: '08:00', end: '09:40' },

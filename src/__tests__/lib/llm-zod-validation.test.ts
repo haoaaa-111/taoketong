@@ -110,4 +110,21 @@ describe('Task 0.5: Zod schema validation for LLM outputs', () => {
             expect(result.error.issues.length).toBeGreaterThan(0);
         }
     });
+
+    it('LLMOutputValidationError contains zod error details', async () => {
+        const { LLMOutputValidationError } = await import('@/lib/llm');
+        const zodResult = ModelerOutputSchema.safeParse({ risk_level: '低风险' });
+        expect(zodResult.success).toBe(false);
+
+        const error = new LLMOutputValidationError('test', {
+            zodErrors: zodResult.success ? [] : zodResult.error.issues,
+            receivedData: { risk_level: '低风险' },
+        });
+
+        expect(error.name).toBe('LLMOutputValidationError');
+        expect(error.details).toHaveProperty('zodErrors');
+        expect(error.details).toHaveProperty('receivedData');
+        expect(Array.isArray(error.details.zodErrors)).toBe(true);
+        expect((error.details.zodErrors as any[]).length).toBeGreaterThan(0);
+    });
 });
