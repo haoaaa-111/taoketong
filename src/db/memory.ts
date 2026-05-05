@@ -6,7 +6,7 @@ export function generateCourseSnapshot(courseId: number): string {
     if (!course) throw new Error(`Course ${courseId} not found`);
 
     const schedules = db.prepare(
-        'SELECT weeks, day_of_week, period_slot FROM course_schedule WHERE course_id = ?'
+        'SELECT id, weeks, day_of_week, period_slot FROM course_schedule WHERE course_id = ?'
     ).all(courseId);
 
     const snapshot = {
@@ -26,6 +26,7 @@ export function generateCourseSnapshot(courseId: number): string {
         exam_weeks: course.exam_weeks ? safeJsonParse<Record<string, unknown>>(course.exam_weeks, {}) : null,
         notes: course.notes,
         schedules: schedules.map((s: any) => ({
+            schedule_id: s.id,
             weeks: safeJsonParse(s.weeks, []),
             day: s.day_of_week,
             period: s.period_slot,

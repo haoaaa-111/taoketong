@@ -131,6 +131,14 @@ export interface CourseMemory {
     last_updated: string;
 }
 
+// === 快照类型 ===
+export interface ScheduleSnapshot {
+    schedule_id: number;
+    weeks: number[];
+    day: number;
+    period: string;
+}
+
 // === 输入/输出类型 ===
 export interface ParsedCourse {
     name: string;
