@@ -37,22 +37,6 @@ export function getLatestSession(): { session: PlanSession; actions: PlanAction[
     return { session, actions };
 }
 
-export function getLatestSessionWithActions(): { session: PlanSession; actions: PlanAction[] } | null {
-    const session = db.prepare(
-        "SELECT * FROM plan_session ORDER BY created_at DESC LIMIT 1"
-    ).get() as PlanSession | undefined;
-    if (!session) return null;
-
-    const actions = db.prepare(
-        `SELECT pa.* FROM plan_action pa
-         LEFT JOIN course_schedule cs ON pa.schedule_id = cs.id
-         WHERE pa.session_id = ?
-         ORDER BY cs.day_of_week, cs.period_slot`
-    ).all(session.id) as PlanAction[];
-
-    return { session, actions };
-}
-
 export function createSession(data: { plan_start_date: string; plan_end_date: string }): number {
     const result = db.prepare(
         'INSERT INTO plan_session (plan_start_date, plan_end_date, status) VALUES (?, ?, "draft")'
