@@ -132,6 +132,19 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<st
     throw new Error(`LLM调用失败: ${lastError?.message || '未知错误'}`);
 }
 
+export function extractJSON(text: string): string {
+    const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+    if (codeBlockMatch) return codeBlockMatch[1].trim();
+
+    const objectMatch = text.match(/\{[\s\S]*\}/);
+    if (objectMatch) return objectMatch[0].trim();
+
+    const arrayMatch = text.match(/\[[\s\S]*\]/);
+    if (arrayMatch) return arrayMatch[0].trim();
+
+    return text.trim();
+}
+
 export async function chatCompletionJSON<T = Record<string, any>>(
     options: ChatCompletionOptions,
     retries = 1
@@ -141,14 +154,12 @@ export async function chatCompletionJSON<T = Record<string, any>>(
     for (let i = 0; i <= retries; i++) {
         try {
             const content = await chatCompletion(options);
-            const jsonMatch = content.match(/```(?:json)?\n?([\s\S]*?)\n?```/) ||
-                              content.match(/\{[\s\S]*\}/);
-            
+            const extracted = extractJSON(content);
             let parsed: any;
-            if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-            } else {
-                parsed = JSON.parse(content);
+            try {
+                parsed = JSON.parse(extracted);
+            } catch {
+                throw new Error(`Failed to parse JSON from LLM output: ${extracted.substring(0, 200)}`);
             }
             
             const schema = options.schema;
