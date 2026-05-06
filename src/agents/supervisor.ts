@@ -1,6 +1,7 @@
 import { chatCompletionJSON } from '@/lib/llm';
 import { readFileSync } from 'fs';
 import { z } from 'zod';
+import type { StructuredPlanContext } from '@/types';
 
 const SYSTEM_PROMPT = readFileSync(
     process.cwd() + '/prompts/supervisor.md',
@@ -30,4 +31,30 @@ export async function generatePlan(
         schema: SupervisorOutputSchema,
     });
     return result;
+}
+
+export function getAdaptiveTemperature(context: StructuredPlanContext): number {
+    const baseTemp = context.temperature_modifier ?? 0.8;
+    const MIN = 0.3;
+
+    // Exam week → conservative
+    if (context.semester_info.is_exam_week) {
+        return Math.max(MIN, Number((baseTemp - 0.4).toFixed(1)));
+    }
+
+    // First week → more conservative
+    if (context.semester_info.is_first_week) {
+        return Math.max(MIN, Number((baseTemp - 0.3).toFixed(1)));
+    }
+
+    // High-risk courses → moderate cooling
+    const hasHighRisk = context.courses.some(
+        c => c.risk_result.risk_level === '高风险'
+    );
+    if (hasHighRisk) {
+        return Math.max(MIN, Number((baseTemp - 0.2).toFixed(1)));
+    }
+
+    // Always floor at minimum
+    return Math.max(MIN, Number(baseTemp.toFixed(1)));
 }
