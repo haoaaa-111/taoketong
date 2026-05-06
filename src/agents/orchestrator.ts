@@ -68,7 +68,7 @@ async function generateWithRetry(ctx: StructuredPlanContext): Promise<{
 }> {
     let temp = getAdaptiveTemperature(ctx);
     for (let i = 0; i < MAX_RETRIES; i++) {
-        const result = await generatePlan(buildSupervisorSystemPrompt(ctx));
+        const result = await generatePlan(buildSupervisorSystemPrompt(ctx), temp);
         const checks = runSelfChecks(result.actions, ctx);
         if (checks.every(c => c.passed)) return result;
         ctx.retry_hint = formatViolationsHint(checks);

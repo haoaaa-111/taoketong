@@ -22,12 +22,13 @@ export type SupervisorAction = z.infer<typeof SupervisorActionSchema>;
 export type SupervisorOutput = z.infer<typeof SupervisorOutputSchema>;
 
 export async function generatePlan(
-    promptContext: string
+    promptContext: string,
+    temperature?: number
 ): Promise<SupervisorOutput> {
     const result = await chatCompletionJSON<SupervisorOutput>({
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: promptContext,
-        temperature: 0.8,
+        temperature: temperature ?? 0.8,
         schema: SupervisorOutputSchema,
     });
     return result;
