@@ -27,7 +27,7 @@ export const logger = {
         switch (level) {
             case 'error': console.error(`${prefix} ${message}${dataStr}`); break;
             case 'warn': console.warn(`${prefix} ${message}${dataStr}`); break;
-            default: console.log(`${prefix} ${message}${dataStr}`);
+            default: process.stderr.write(`${prefix} ${message}${dataStr}\n`);
         }
     },
     info(module: string, message: string, data?: unknown) { this.log('info', module, message, data); },

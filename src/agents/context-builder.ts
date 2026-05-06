@@ -1,6 +1,27 @@
 import type { StructuredPlanContext, CoursePlanInput, RiskResult, RollcallInfo } from '@/types';
 import type { ModelerOutput } from './modeler';
 
+function parseExamWeeks(data: Record<string, unknown>): { mid?: number; final?: number } | null {
+    const raw = data.exam_weeks;
+    if (raw === null || raw === undefined || typeof raw !== 'object') return null;
+    const obj = raw as Record<string, unknown>;
+    return {
+        mid: typeof obj.mid === 'number' ? obj.mid : undefined,
+        final: typeof obj.final === 'number' ? obj.final : undefined,
+    };
+}
+
+function parseRollcallMethods(data: Record<string, unknown>): Array<{ method: string; frequency: string }> | undefined {
+    const raw = data.rollcall_methods;
+    if (!Array.isArray(raw)) return undefined;
+    return raw
+        .filter((m): m is Record<string, unknown> => typeof m === 'object' && m !== null)
+        .map(m => ({
+            method: typeof m.method === 'string' ? m.method : '未知',
+            frequency: typeof m.frequency === 'string' ? m.frequency : '偶尔',
+        }));
+}
+
 export function buildPlanContext(
     courses: Array<{ courseId: number; snapshot: string }>,
     profile: { weekly_skip_target: number; escape_rush_accept: boolean },
@@ -12,7 +33,7 @@ export function buildPlanContext(
     const courseInputs: CoursePlanInput[] = courses.map((c, i) => {
         const data = JSON.parse(c.snapshot);
         const risk = riskResults[c.courseId];
-        const examWeeks = data.exam_weeks as { mid?: number; final?: number } | null;
+        const examWeeks = parseExamWeeks(data);
         const isExamWeek = examWeeks
             ? Math.abs(currentWeek - (examWeeks.mid ?? 999)) <= 1
                 || Math.abs(currentWeek - (examWeeks.final ?? 999)) <= 1
@@ -49,7 +70,7 @@ export function buildPlanContext(
             day_of_week: config.current_day_of_week ?? 1,
             is_exam_week: courseInputs.some(c => {
                 const data = JSON.parse(courses.find(x => x.courseId === c.course_id)?.snapshot ?? '{}');
-                const ew = data.exam_weeks as { mid?: number; final?: number } | null;
+                const ew = parseExamWeeks(data);
                 return ew ? Math.abs(currentWeek - (ew.mid ?? 999)) <= 1
                          || Math.abs(currentWeek - (ew.final ?? 999)) <= 1 : false;
             }),
@@ -61,7 +82,7 @@ export function buildPlanContext(
 }
 
 function extractRollcall(data: Record<string, unknown>): RollcallInfo {
-    const methods = data.rollcall_methods as Array<{ method: string; frequency: string }> | undefined;
+    const methods = parseRollcallMethods(data);
     if (methods && methods.length > 0) {
         return { method: methods[0].method, frequency: methods[0].frequency };
     }

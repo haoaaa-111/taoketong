@@ -112,4 +112,22 @@ describe('Orchestrator Pipeline Parallelism', () => {
         expect(result.actions[0]).toHaveProperty('reason');
     });
 
+    it('should not crash when profile.plan_weeks is 0 (Bug-7)', async () => {
+        const { ensureProfileExists } = await import('@/db/profile');
+        (ensureProfileExists as jest.Mock).mockReturnValue({
+            id: 1, plan_weeks: 0, skip_motivation: [],
+            plan_start_date: null, weekly_skip_habit: 0,
+            weekly_skip_target: 3, sub_cost_max: 30,
+            escape_rush_accept: true, commute_cost_minutes: 10,
+            has_completed_onboarding: true,
+            created_at: '', updated_at: '',
+        });
+
+        const { generateSession } = await import('@/agents/orchestrator');
+        const result = await generateSession({});
+
+        expect(result).toBeDefined();
+        expect(result.session_id).toBe(1);
+    });
+
 });
