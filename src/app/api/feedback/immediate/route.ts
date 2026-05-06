@@ -9,6 +9,8 @@ import { validateBody, ImmediateFeedbackSchema } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { standardErrorResponse, standardSanitizedErrorResponse, ERR_CODES } from '@/lib/errors';
 import { db } from '@/db';
+import { parseUserInput } from '@/agents/memory';
+import { scanUserInput } from '@/lib/prompt-safety';
 
 ensureDatabaseReady();
 
@@ -24,6 +26,17 @@ export async function POST(request: NextRequest) {
         if ('response' in validation) return validation.response;
 
         const { session_id, decision, adjustment_notes } = validation.data;
+
+        if (adjustment_notes) {
+            const scanResult = scanUserInput(adjustment_notes);
+            if (!scanResult.safe) {
+                return standardErrorResponse(
+                    ERR_CODES.PROMPT_INJECTION,
+                    '输入包含不安全的指令模式: ' + (scanResult.blocked_reason || '未知'),
+                    undefined, 400
+                );
+            }
+        }
 
         if (decision === 'rejected') {
             // Wrap feedback insertion and course memory updates in a transaction
@@ -41,6 +54,15 @@ export async function POST(request: NextRequest) {
             });
             
             transaction();
+
+            try {
+                const parseResult = await parseUserInput(adjustment_notes ?? '');
+                if (parseResult.updates.length > 0) {
+                    console.log('[Memory] Parsed', parseResult.updates.length, 'updates from feedback');
+                }
+            } catch (e) {
+                console.warn('[Memory] Failed to parse adjustment notes:', e instanceof Error ? e.message : String(e));
+            }
 
             const result = await generateSession({
                 adjustment_notes: adjustment_notes ?? undefined,

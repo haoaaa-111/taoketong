@@ -8,6 +8,8 @@ import { validateBody, WeeklyFeedbackSchema } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { standardErrorResponse, standardSanitizedErrorResponse, ERR_CODES, handleError } from '@/lib/errors';
 import { db } from '@/db';
+import { parseUserInput } from '@/agents/memory';
+import { scanUserInput } from '@/lib/prompt-safety';
 
 ensureDatabaseReady();
 
@@ -23,6 +25,18 @@ export async function POST(request: NextRequest) {
         if ('response' in validation) return validation.response;
 
         const data = validation.data;
+
+        const userText = data.comment || data.memory_updates || '';
+        if (userText) {
+            const scanResult = scanUserInput(userText);
+            if (!scanResult.safe) {
+                return standardErrorResponse(
+                    ERR_CODES.PROMPT_INJECTION,
+                    '输入包含不安全的指令模式: ' + (scanResult.blocked_reason || '未知'),
+                    undefined, 400
+                );
+            }
+        }
 
         // Wrap all DB operations in transaction to maintain consistency
         const transaction = db.transaction(() => {
@@ -54,6 +68,20 @@ export async function POST(request: NextRequest) {
         });
 
         transaction();
+
+        try {
+            const parseResult = await parseUserInput(
+                data.memory_updates ?? data.comment ?? ''
+            );
+            if (parseResult.updates.length > 0) {
+                console.log('[Memory] Parsed', parseResult.updates.length, 'updates from weekly feedback');
+                if (parseResult.detected_patterns?.length) {
+                    console.log('[Memory] Detected patterns:', parseResult.detected_patterns);
+                }
+            }
+        } catch (e) {
+            console.warn('[Memory] Failed to parse weekly feedback:', e instanceof Error ? e.message : String(e));
+        }
 
         try {
             const result = await generateSession({});
