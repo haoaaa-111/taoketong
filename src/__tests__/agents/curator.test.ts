@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { SkipClassCurator } from '@/agents/curator';
 
 describe('SkipClassCurator', () => {
@@ -59,5 +62,21 @@ describe('SkipClassCurator', () => {
         expect(curator.getState().paused).toBe(true);
         curator.resume();
         expect(curator.getState().paused).toBe(false);
+    });
+
+    it('rollback should call snapshotBeforeRun without throwing', async () => {
+        await expect(curator.rollback('/fake/path')).resolves.toBeUndefined();
+    });
+
+    it('should handle corrupt state file gracefully (catch branch in loadState)', () => {
+        const statePath = path.join(os.homedir(), '.skipclass', '.curator_state.json');
+        fs.mkdirSync(path.dirname(statePath), { recursive: true });
+        fs.writeFileSync(statePath, 'this is not valid json {{{');
+
+        const fresh = new SkipClassCurator();
+        expect(fresh.getState().run_count).toBe(0);
+        expect(fresh.getState().last_run_at).toBeNull();
+
+        fresh.resetState();
     });
 });

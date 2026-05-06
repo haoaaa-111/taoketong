@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import { chatCompletion } from '@/lib/llm';
 
 export interface CuratorConfig {
     enabled: boolean;
@@ -142,8 +143,20 @@ export class SkipClassCurator {
         // TBD: wire to PatternLearner when DB is available
     }
 
-    private async generateInsights(_acc: number | null, _prec: number | null): Promise<string[]> {
-        return [];
+    private async generateInsights(acc: number | null, prec: number | null): Promise<string[]> {
+        const auxModel = process.env.AUX_LLM_MODEL;
+        try {
+            const result = await chatCompletion({
+                systemPrompt: '你是一个教学质量评估助手。',
+                userPrompt: `根据以下数据生成改进建议：方案接受率=${acc ?? 'N/A'}%，准确率=${prec ?? 'N/A'}%。请返回不超过3条建议。`,
+                model: auxModel,
+                temperature: 0.3,
+                circuitKey: 'curator-review',
+            });
+            return result.split('\n').filter((s: string) => s.trim().length > 0).slice(0, 3);
+        } catch {
+            return [];
+        }
     }
 
     private async compressOldSemesters(): Promise<void> {

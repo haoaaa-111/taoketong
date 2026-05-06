@@ -3,7 +3,9 @@ import './globals.css';
 import { ensureDatabaseReady } from '@/db/init';
 import Navbar from '@/components/layout/Navbar';
 
-ensureDatabaseReady();
+try { ensureDatabaseReady(); } catch { /* DB init may fail during static generation */ }
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
     title: '逃课通',

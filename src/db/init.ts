@@ -1,5 +1,6 @@
 import { initDatabase } from './index';
 import { validateEnv } from '../lib/env-check';
+import { logger } from '../lib/logger';
 
 // Promise-based lock to prevent race conditions during initialization
 let initPromise: Promise<void> | null = null;
@@ -38,30 +39,25 @@ export async function ensureDatabaseReadyAsync(): Promise<void> {
 }
 
 async function initializeDatabase(): Promise<void> {
-    // Validate environment variables before initializing database
     const envValidation = validateEnv();
     
     if (!envValidation.valid) {
-        console.warn('Environment validation issues found:');
+        logger.warn('DB', 'Environment validation issues found');
         for (const error of envValidation.errors) {
-            console.warn(`  ERROR: ${error}`);
+            logger.warn('DB', error);
         }
         
-        // Don't crash if only LLM_API_KEY is missing, warn and continue
-        // Application can still serve static data without LLM
         if (envValidation.errors.length > 0) {
-            console.log('Proceeding with database initialization despite LLM configuration issues...');
+            logger.info('DB', 'Proceeding with database initialization despite LLM configuration issues');
         }
     } else {
-        console.log('Environment variables validated successfully');
+        logger.info('DB', 'Environment variables validated successfully');
     }
     
-    // Log warnings if any
     for (const warning of envValidation.warnings) {
-        console.warn(`  WARNING: ${warning}`);
+        logger.warn('DB', warning);
     }
     
-    // Initialize the database
     initDatabase();
     
     initialized = true;

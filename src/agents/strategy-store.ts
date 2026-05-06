@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import { z } from 'zod';
 
 export type StrategyState = 'active' | 'stale' | 'archived';
 
@@ -15,6 +16,18 @@ export interface Strategy {
     created_by: 'user' | 'agent';
     pinned?: boolean;
 }
+
+const StrategySchema = z.object({
+    name: z.string(),
+    description: z.string(),
+    content: z.string(),
+    created_at: z.string(),
+    last_used_at: z.string(),
+    use_count: z.number(),
+    state: z.enum(['active', 'stale', 'archived']),
+    created_by: z.enum(['user', 'agent']),
+    pinned: z.boolean().optional(),
+});
 
 export class StrategyStore {
     private basePath: string;
@@ -74,7 +87,7 @@ export class StrategyStore {
         const filePath = path.join(this.basePath, `${name}.json`);
         try {
             const content = fs.readFileSync(filePath, 'utf-8');
-            return JSON.parse(content) as Strategy;
+            return StrategySchema.parse(JSON.parse(content));
         } catch {
             return null;
         }
@@ -87,7 +100,7 @@ export class StrategyStore {
                 .filter(f => f.endsWith('.json'))
                 .map(f => {
                     const content = fs.readFileSync(path.join(this.basePath, f), 'utf-8');
-                    return JSON.parse(content) as Strategy;
+                    return StrategySchema.parse(JSON.parse(content));
                 });
         } catch {
             return [];

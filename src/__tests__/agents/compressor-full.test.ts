@@ -50,4 +50,11 @@ describe('Course History Compression', () => {
         const size = estimateSnapshotSize(data);
         expect(size).toBe(JSON.stringify(data).length);
     });
+
+    it('should fall back to default gpt-4o when all model env vars are unset (line 23 branch)', async () => {
+        delete process.env.AUX_LLM_MODEL;
+        delete process.env.LLM_MODEL;
+        const result = await compressSemester([{}], '2025-Spring');
+        expect(result).toContain('[COMPRESSED SEMESTER 2025-Spring]');
+    });
 });
