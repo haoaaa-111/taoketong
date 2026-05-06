@@ -160,6 +160,65 @@ export interface ParsedCourseGroup {
     sessions: ParsedSession[];
 }
 
+// === Chunk 2: Structured Plan Context Types ===
+export interface StructuredPlanContext {
+    user_profile: PlanUserProfile;
+    semester_info: PlanSemesterInfo;
+    courses: CoursePlanInput[];
+    overrides?: PlanOverrides;
+    retry_hint?: string;
+    temperature_modifier?: number;
+    memory_context?: string;
+}
+
+export interface PlanUserProfile {
+    risk_tolerance: string;
+    weekly_skip_target: number;
+    study_mode: string;
+    escape_rush_accept: boolean;
+    constraints: string[];
+}
+
+export interface PlanSemesterInfo {
+    current_week: number;
+    day_of_week: number;
+    is_exam_week: boolean;
+    is_first_week: boolean;
+    total_weeks: number;
+}
+
+export interface PlanOverrides {
+    must_attend_schedule_ids: number[];
+    skip_schedule_ids: number[];
+}
+
+export interface CoursePlanInput {
+    schedule_id: number;
+    course_id: number;
+    course_name: string;
+    course_type: string; // '专业课' | '公共课' | '水课'
+    study_mode: string;
+    schedule_day: number;
+    schedule_period: string;
+    schedule_weeks: number[];
+    risk_result: RiskResult;
+    rollcall_info: RollcallInfo;
+    is_first_class: boolean;
+    constraints: string[];
+}
+
+export interface RiskResult {
+    risk_level: '无风险' | '低风险' | '中风险' | '高风险';
+    risk_reason: string;
+    next_caught_probability: number;
+}
+
+export interface RollcallInfo {
+    method: string;
+    frequency: string;
+    last_caught_week?: number;
+}
+
 // === Step1 课程分组类型（带 UI 状态字段）===
 export interface SessionEntry {
     id: string;
