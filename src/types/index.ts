@@ -219,6 +219,40 @@ export interface RollcallInfo {
     last_caught_week?: number;
 }
 
+// === Chunk 2: Supervisor Output Types ===
+export interface SupervisorOutput {
+    actions: Array<{ schedule_id: number; action: string; reason: string }>;
+    meta: GenerationMeta;
+    decision_rationale: DecisionRationale[];
+}
+
+export interface GenerationMeta {
+    generation_attempt: number;
+    temperature_used: number;
+    self_check_passed: boolean;
+    self_check_violations?: Array<{
+        rule_id: number;
+        rule_name: string;
+        passed: boolean;
+        violations: Array<{
+            schedule_id: number;
+            action: string;
+            expected_action: string;
+            reason: string;
+        }>;
+    }>;
+    generation_confidence: number;
+    token_usage: { input: number; output: number };
+}
+
+export interface DecisionRationale {
+    schedule_id: number;
+    action: string;
+    primary_factor: string;
+    supporting_factors: string[];
+    risk_level: string;
+}
+
 // === Step1 课程分组类型（带 UI 状态字段）===
 export interface SessionEntry {
     id: string;
