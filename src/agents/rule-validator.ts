@@ -1,6 +1,8 @@
 // src/agents/rule-validator.ts
 
-import type { PlanAction, StructuredPlanContext } from '@/types';
+import type { StructuredPlanContext } from '@/types';
+
+type ActionEntry = { schedule_id: number; action: string; reason: string };
 
 export interface RuleCheckResult {
     rule_id: number;
@@ -21,7 +23,7 @@ export interface RuleViolation {
  * Returns results for each rule with violation details.
  */
 export function runSelfChecks(
-    actions: PlanAction[],
+    actions: ActionEntry[],
     context: StructuredPlanContext
 ): RuleCheckResult[] {
     const checks: RuleCheckResult[] = [];

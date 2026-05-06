@@ -1,11 +1,12 @@
 import * as dbMemory from '@/db/memory';
 import * as dbSessions from '@/db/sessions';
 import * as dbProfile from '@/db/profile';
-import { generatePlan } from './supervisor';
+import { generatePlan, getAdaptiveTemperature } from './supervisor';
 import { db } from '@/db';
 import { buildSupervisorSystemPrompt } from './prompt-builder';
 import { runSelfChecks, formatViolationsHint } from './rule-validator';
 import { buildPlanContext } from './context-builder';
+import { modelAllCourses } from './modeler-pool';
 import { addDays, formatISO } from 'date-fns';
 import { SessionGenerationError } from './session-error';
 import type { PlanAction, StructuredPlanContext } from '@/types';
@@ -16,7 +17,6 @@ export interface SessionInput {
 }
 
 const MAX_RETRIES = 3;
-const BASE_TEMP = 0.8;
 const TEMP_STEP = 0.2;
 
 export async function generateSession(input: SessionInput): Promise<{
@@ -35,7 +35,8 @@ export async function generateSession(input: SessionInput): Promise<{
         console.warn('[Orchestrator] Generated plan with 0 plan_weeks');
     }
 
-    const ctx = buildPlanContext(courses, profile, config, input.constraints?.must_attend_ids);
+    const riskResults = await modelAllCourses(courses);
+    const ctx = buildPlanContext(courses, profile, config, riskResults, input.constraints?.must_attend_ids);
     const plan = await generateWithRetry(ctx);
 
     return db.transaction(() => {
@@ -65,7 +66,7 @@ export async function generateSession(input: SessionInput): Promise<{
 async function generateWithRetry(ctx: StructuredPlanContext): Promise<{
     actions: Array<{ schedule_id: number; action: string; reason: string }>;
 }> {
-    let temp = ctx.temperature_modifier ?? BASE_TEMP;
+    let temp = getAdaptiveTemperature(ctx);
     for (let i = 0; i < MAX_RETRIES; i++) {
         const result = await generatePlan(buildSupervisorSystemPrompt(ctx));
         const checks = runSelfChecks(result.actions, ctx);

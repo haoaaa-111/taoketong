@@ -6,6 +6,7 @@ jest.mock('@/agents/modeler', () => ({
 
 jest.mock('@/agents/supervisor', () => ({
     generatePlan: jest.fn(),
+    getAdaptiveTemperature: jest.fn(() => 0.8),
 }));
 
 jest.mock('@/db/memory', () => ({
