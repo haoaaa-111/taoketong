@@ -1,4 +1,4 @@
-import type { StructuredPlanContext, CoursePlanInput, RiskResult, RollcallInfo } from '@/types';
+import type { StructuredPlanContext, CoursePlanInput, RollcallInfo } from '@/types';
 import type { ModelerOutput } from './modeler';
 
 function parseExamWeeks(data: Record<string, unknown>): { mid?: number; final?: number } | null {
@@ -33,11 +33,6 @@ export function buildPlanContext(
     const courseInputs: CoursePlanInput[] = courses.map((c, i) => {
         const data = JSON.parse(c.snapshot);
         const risk = riskResults[c.courseId];
-        const examWeeks = parseExamWeeks(data);
-        const isExamWeek = examWeeks
-            ? Math.abs(currentWeek - (examWeeks.mid ?? 999)) <= 1
-                || Math.abs(currentWeek - (examWeeks.final ?? 999)) <= 1
-            : false;
 
         return {
             schedule_id: data.schedule_id ?? i + 1,

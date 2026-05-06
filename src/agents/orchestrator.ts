@@ -28,6 +28,7 @@ export async function generateSession(input: SessionInput): Promise<{
     const traceId = crypto.randomUUID();
     setTraceId(traceId);
     const startTime = Date.now();
+    const t0 = Date.now();
     const courses = dbMemory.getAllCourseSnapshots();
     if (!courses || courses.length === 0) {
         throw new SessionGenerationError('No courses available for plan generation', {
@@ -38,14 +39,17 @@ export async function generateSession(input: SessionInput): Promise<{
         dbProfile.ensureProfileExists(),
         dbProfile.ensureConfigExists(),
     ]);
+    const t1 = Date.now();
 
     if ((profile.plan_weeks ?? 0) === 0) {
         logger.warn('Orchestrator', 'Generated plan with 0 plan_weeks');
     }
 
     const riskResults = await modelAllCourses(courses);
+    const t2 = Date.now();
     const ctx = buildPlanContext(courses, profile, config, riskResults, input.constraints?.must_attend_ids);
     const plan = await generateWithRetry(ctx);
+    const t3 = Date.now();
 
     const result = db.transaction(() => {
         const latest = dbSessions.getLatestSession();
@@ -70,11 +74,19 @@ export async function generateSession(input: SessionInput): Promise<{
         return { session_id: sessionId, actions };
     })();
 
+    const t4 = Date.now();
     recordSessionMetrics({
         session_id: String(result.session_id),
         trace_id: traceId,
-        duration_ms: Date.now() - startTime,
-        phases: { context_build_ms: 0, memory_prefetch_ms: 0, risk_modeling_ms: 0, plan_generation_ms: 0, rule_validation_ms: 0, persistence_ms: 0 },
+        duration_ms: t4 - startTime,
+        phases: {
+            context_build_ms: t1 - t0,
+            memory_prefetch_ms: 0,
+            risk_modeling_ms: t2 - t1,
+            plan_generation_ms: t3 - t2,
+            rule_validation_ms: 0,
+            persistence_ms: t4 - t3,
+        },
         token_usage: { modeler_input: 0, modeler_output: 0, supervisor_input: 0, supervisor_output: 0, total: 0 },
         courses_count: courses.length,
         courses_failed: 0,

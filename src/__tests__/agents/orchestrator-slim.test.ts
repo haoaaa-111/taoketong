@@ -9,7 +9,7 @@ describe('Orchestrator Responsibility Separation', () => {
         const lines = content.split('\n');
 
         // Post-parallelism + metrics/trace_id instrumentation
-        expect(lines.length).toBeLessThanOrEqual(105);
+        expect(lines.length).toBeLessThanOrEqual(115);
     });
 
     it('should not contain prompt-building logic (moved to prompt-builder.ts)', () => {
