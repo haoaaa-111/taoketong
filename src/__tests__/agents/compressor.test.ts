@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { estimateSnapshotSize, shouldCompress } from '@/agents/compressor';
+import { decayWeight, estimateSnapshotSize, shouldCompress } from '@/agents/compressor';
 
 describe('Capacity Management', () => {
     it('should estimate snapshot size correctly', () => {
@@ -27,5 +27,25 @@ describe('Capacity Management', () => {
     it('should handle empty data gracefully', () => {
         expect(shouldCompress('')).toBe(false);
         expect(estimateSnapshotSize({})).toBeGreaterThan(0);
+    });
+});
+
+describe('decayWeight', () => {
+    it('should return max weight (2.0) for recent observations (≤4 weeks)', () => {
+        expect(decayWeight(1, 1)).toBe(2.0); // same week
+        expect(decayWeight(4, 8)).toBe(2.0); // exactly 4 weeks ago
+        expect(decayWeight(5, 5)).toBe(2.0); // same week edge
+    });
+
+    it('should exponentially decay for observations >4 weeks old', () => {
+        const weight5 = decayWeight(5, 10); // 5 weeks ago
+        const weight10 = decayWeight(10, 20); // 10 weeks ago
+        expect(weight5).toBeLessThan(2.0);
+        expect(weight10).toBeLessThan(weight5); // decay continues
+    });
+
+    it('should never decay below 0.3', () => {
+        const veryOld = decayWeight(1, 100); // 99 weeks ago
+        expect(veryOld).toBeGreaterThanOrEqual(0.3);
     });
 });

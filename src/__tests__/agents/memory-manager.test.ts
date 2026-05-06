@@ -20,6 +20,26 @@ function createMockProvider(name: string, shouldFail = false): MemoryProvider {
     } as unknown as MemoryProvider;
 }
 
+function createProviderWithTool(name: string, toolName: string): MemoryProvider {
+    return {
+        name,
+        isAvailable: () => true,
+        initialize: jest.fn().mockResolvedValue(undefined),
+        getToolSchemas: () => [{
+            type: 'function' as const,
+            function: {
+                name: toolName,
+                description: 'Test tool',
+                parameters: {},
+            },
+        }],
+        systemPromptBlock: () => `${name} system block`,
+        prefetch: jest.fn().mockResolvedValue(`${name}: data`),
+        syncTurn: jest.fn().mockResolvedValue(undefined),
+        shutdown: jest.fn().mockResolvedValue(undefined),
+    } as unknown as MemoryProvider;
+}
+
 describe('MemoryManager', () => {
     let manager: MemoryManager;
 
@@ -71,5 +91,21 @@ describe('MemoryManager', () => {
         expect(fenced).toContain('<course-memory-context>');
         expect(fenced).toContain('</course-memory-context>');
         expect(fenced).toContain(raw);
+    });
+
+    describe('handleToolCall', () => {
+        it('should return result for a known tool name', async () => {
+            const toolProvider = createProviderWithTool('tool-provider', 'test_tool');
+            manager.registerProvider(toolProvider);
+            const result = await manager.handleToolCall('test_tool', { key: 'value' });
+            expect(result).toContain('test_tool');
+            expect(result).toContain('tool-provider');
+        });
+
+        it('should throw for unknown tool name', async () => {
+            await expect(
+                manager.handleToolCall('nonexistent_tool', {})
+            ).rejects.toThrow('No provider registered');
+        });
     });
 });
