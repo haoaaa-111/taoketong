@@ -16,8 +16,32 @@ export const SYSTEM_SAFETY_PREFIX = `重要安全指令：你是一个专业的�
 
 const CONTEXT_THREAT_PATTERNS: { pattern: RegExp; type: string }[] = [
     {
+        pattern: /忽略\s*(所有|之前|以上|任何)[\s\S]{0,15}?\s*(指令|规则|要求|限制)/gi,
+        type: 'prompt_injection',
+    },
+    {
+        pattern: /显示\s*(你|系统)\s*(的)?\s*(提示词|指令|提示|系统提示)/gi,
+        type: 'sys_prompt_override',
+    },
+    {
+        pattern: /忘记\s*(你|自己)\s*(的)?\s*(身份|角色|指令|规则|设定)/gi,
+        type: 'prompt_injection',
+    },
+    {
+        pattern: /(你现在|从现在开始)\s*(是|变成|成为|作为)\s*(一个)?\s*(没有限制|无所不能|黑客)/gi,
+        type: 'prompt_injection',
+    },
+    {
         pattern: /ignore\s+.+\s+instructions/gi,
         type: 'prompt_injection',
+    },
+    {
+        pattern: /forget\s+(your|all|previous)[\s\S]{0,20}?\s+(instructions|rules|guidelines|training)/gi,
+        type: 'prompt_injection',
+    },
+    {
+        pattern: /reveal\s+(your|the)\s+(system\s+)?(prompt|instructions|rules)/gi,
+        type: 'sys_prompt_override',
     },
     {
         pattern: /do\s+not\s+tell\s+the\s+user/gi,
@@ -59,8 +83,15 @@ export function scanUserInput(input: string): ScanResult {
 }
 
 export function sanitizeOutput(text: string): string {
-    return text
-        .replace(/<course-memory-context>[\s\S]*?<\/course-memory-context>/g, '')
-        .replace(/<risk-assessment-context>[\s\S]*?<\/risk-assessment-context>/g, '')
-        .trim();
+    const tagNames = ['course-memory-context', 'risk-assessment-context'];
+    let result = text;
+    for (const tag of tagNames) {
+        const regex = new RegExp(`<${tag}>.*?</${tag}>`, 'gs');
+        while (regex.test(result)) {
+            result = result.replace(regex, '');
+        }
+        // Strip any orphaned opening/closing tags left from nested stripping
+        result = result.replace(new RegExp(`</?${tag}>`, 'g'), '');
+    }
+    return result.trim();
 }
