@@ -7,6 +7,7 @@ import { buildSupervisorSystemPrompt } from './prompt-builder';
 import { runSelfChecks, formatViolationsHint } from './rule-validator';
 import { buildPlanContext } from './context-builder';
 import { addDays, formatISO } from 'date-fns';
+import { SessionGenerationError } from './session-error';
 import type { PlanAction, StructuredPlanContext } from '@/types';
 
 export interface SessionInput {
@@ -22,8 +23,17 @@ export async function generateSession(input: SessionInput): Promise<{
     session_id: number; actions: PlanAction[];
 }> {
     const courses = dbMemory.getAllCourseSnapshots();
+    if (!courses || courses.length === 0) {
+        throw new SessionGenerationError('No courses available for plan generation', {
+            code: 'EMPTY_COURSES', suggestion: '请先通过课表导入添加课程',
+        });
+    }
     const profile = dbProfile.ensureProfileExists();
     const config = dbProfile.ensureConfigExists();
+
+    if ((profile.plan_weeks ?? 0) === 0) {
+        console.warn('[Orchestrator] Generated plan with 0 plan_weeks');
+    }
 
     const ctx = buildPlanContext(courses, profile, config, input.constraints?.must_attend_ids);
     const plan = await generateWithRetry(ctx);
