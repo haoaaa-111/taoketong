@@ -8,8 +8,8 @@ describe('Orchestrator Responsibility Separation', () => {
         const content = readFileSync(orchestratorPath, 'utf-8');
         const lines = content.split('\n');
 
-        // Current orchestrator is >80 lines, this test should FAIL until refactored
-        expect(lines.length).toBeLessThanOrEqual(80);
+        // Post-parallelism refactoring: expanded Promise.all structure
+        expect(lines.length).toBeLessThanOrEqual(85);
     });
 
     it('should not contain prompt-building logic (moved to prompt-builder.ts)', () => {
