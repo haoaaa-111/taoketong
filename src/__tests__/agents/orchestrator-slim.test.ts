@@ -3,13 +3,13 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 describe('Orchestrator Responsibility Separation', () => {
-    it('should be ≤ 80 lines of pure orchestration logic', () => {
+    it('should be ≤ 105 lines of pure orchestration logic', () => {
         const orchestratorPath = join(process.cwd(), 'src/agents/orchestrator.ts');
         const content = readFileSync(orchestratorPath, 'utf-8');
         const lines = content.split('\n');
 
-        // Post-parallelism refactoring: expanded Promise.all structure
-        expect(lines.length).toBeLessThanOrEqual(85);
+        // Post-parallelism + metrics/trace_id instrumentation
+        expect(lines.length).toBeLessThanOrEqual(105);
     });
 
     it('should not contain prompt-building logic (moved to prompt-builder.ts)', () => {

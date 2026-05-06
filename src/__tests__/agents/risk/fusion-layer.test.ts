@@ -45,4 +45,36 @@ describe('Fusion Layer', () => {
         );
         expect(result.disagreement_flag).toBeUndefined();
     });
+
+    it('should map bayes probability < 0.3 to low risk (line 21)', () => {
+        const result = fuse(
+            { ...baseRule, risk_level: '中风险', priority: 30 },
+            { probability: 0.1, trend: 'decreasing' },
+            { risk_level: '高风险', reason: 'test' }
+        );
+        expect(result.disagreement_flag).toBeDefined();
+        expect(result.disagreement_flag!.details).toContain('Bayes: 低风险');
+    });
+
+    it('should detect rule_vs_llm when rule and llm disagree but bayes agrees with rule (lines 68-69)', () => {
+        const result = fuse(
+            { ...baseRule, risk_level: '中风险', priority: 30 },
+            { probability: 0.35, trend: 'stable' },
+            { risk_level: '高风险', reason: 'test' }
+        );
+        expect(result.disagreement_flag).toBeDefined();
+        expect(result.disagreement_flag!.type).toBe('rule_vs_llm');
+        expect(result.disagreement_flag!.resolution).toBe('needs_review');
+    });
+
+    it('should detect bayes_vs_rule when rule and bayes disagree but llm agrees with rule (lines 71-72)', () => {
+        const result = fuse(
+            { ...baseRule, risk_level: '中风险', priority: 30 },
+            { probability: 0.1, trend: 'decreasing' },
+            { risk_level: '中风险', reason: 'test' }
+        );
+        expect(result.disagreement_flag).toBeDefined();
+        expect(result.disagreement_flag!.type).toBe('bayes_vs_rule');
+        expect(result.disagreement_flag!.resolution).toBe('needs_review');
+    });
 });

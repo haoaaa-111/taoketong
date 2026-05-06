@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { observeOpenAI } from '@langfuse/openai';
 import { z } from 'zod';
 
 let consecutiveFailures = 0;
@@ -54,11 +53,7 @@ export function getLLMClient(): OpenAI {
             maxRetries: 0,
         });
 
-        if (process.env.LANGFUSE_SECRET_KEY) {
-            openaiClient = observeOpenAI(baseClient);
-        } else {
-            openaiClient = baseClient;
-        }
+        openaiClient = baseClient;
     }
     return openaiClient;
 }
