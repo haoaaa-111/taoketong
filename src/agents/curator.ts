@@ -62,9 +62,11 @@ export class SkipClassCurator {
         await this.compressOldSemesters();
 
         const duration = (Date.now() - startTime) / 1000;
+        const accStr = acceptanceRate !== null ? `${acceptanceRate}%` : 'N/A';
+        const precStr = accuracyRate !== null ? `${accuracyRate}%` : 'N/A';
         this.state.last_run_at = new Date().toISOString();
         this.state.last_run_duration_seconds = duration;
-        this.state.last_run_summary = `Accept: ${acceptanceRate}%, Acc: ${accuracyRate}%, Insights: ${insights.length}`;
+        this.state.last_run_summary = `Accept: ${accStr}, Acc: ${precStr}, Insights: ${insights.length}`;
         this.state.run_count += 1;
         this.saveState();
 
@@ -128,19 +130,19 @@ export class SkipClassCurator {
         fs.writeFileSync(this.statePath, JSON.stringify(this.state, null, 2));
     }
 
-    private async evaluateAcceptanceRate(): Promise<number> {
-        return 85;
+    private async evaluateAcceptanceRate(): Promise<number | null> {
+        return null; // STUB: wire to DB when sessions + feedback tables are available
     }
 
-    private async evaluateAccuracyRate(): Promise<number> {
-        return 72;
+    private async evaluateAccuracyRate(): Promise<number | null> {
+        return null; // STUB: wire to DB when weekly_feedback + plan_actions tables are available
     }
 
     private async calibrateModels(): Promise<void> {
         // TBD: wire to PatternLearner when DB is available
     }
 
-    private async generateInsights(_acc: number, _prec: number): Promise<string[]> {
+    private async generateInsights(_acc: number | null, _prec: number | null): Promise<string[]> {
         return [];
     }
 

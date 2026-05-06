@@ -39,7 +39,7 @@ export class PatternLearner {
             const recentCaught = recent.filter(f => f.was_caught).length;
             const earlierCaught = earlier.filter(f => f.was_caught).length;
 
-            if (recentCaught > earlierCaught * 2 && recentCaught >= 2) {
+            if (recentCaught > earlierCaught * 2 && recentCaught >= 2 && recent.length >= 3) {
                 shifts.push({
                     course_id: courseId,
                     course_name: `Course-${courseId}`,

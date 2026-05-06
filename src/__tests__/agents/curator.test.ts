@@ -43,6 +43,7 @@ describe('SkipClassCurator', () => {
         expect(typeof result).toBe('string');
         expect(result).toContain('Accept:');
         expect(result).toContain('Acc:');
+        expect(result).toContain('N/A'); // stubs return N/A
     });
 
     it('runReview should update state after completion', async () => {

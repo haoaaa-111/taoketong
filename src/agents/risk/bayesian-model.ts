@@ -34,7 +34,7 @@ export class BayesianRollcallModel {
     getDecayWeight(weekNumber: number, currentWeek: number): number {
         const weeksAgo = currentWeek - weekNumber;
         if (weeksAgo <= 4) return 2.0;
-        return Math.max(0.3, Math.exp(-0.1 * (weeksAgo - 4)));
+        return Math.max(0.3, Math.exp(-0.25 * (weeksAgo - 4)));
     }
 
     expectedProbability(): number {

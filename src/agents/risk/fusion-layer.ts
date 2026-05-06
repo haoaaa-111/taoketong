@@ -37,32 +37,56 @@ export function fuse(
         confidence = 0.5;
     }
 
-    const levels = new Set([rule.risk_level, llm.risk_level, bayesToLevel(bayes.probability)]);
+    const ruleLevel = rule.risk_level;
+    const llmLevel = llm.risk_level;
+    const bayesLevel = bayesToLevel(bayes.probability);
 
-    if (levels.size > 1 && rule.priority < 70) {
+    const allSame = ruleLevel === llmLevel && llmLevel === bayesLevel;
+    if (allSame || rule.priority >= 70) {
         return {
             risk_level: finalLevel,
-            confidence: 0.4,
+            confidence: Math.min(1, confidence),
             components: {
                 rule_based: rule,
                 bayesian: { probability: bayes.probability, trend: bayes.trend },
                 llm: { risk_level: llm.risk_level, reason: llm.reason, key_signals: llm.key_signals ?? [] },
             },
-            disagreement_flag: {
-                type: 'all_conflict',
-                details: `Rule: ${rule.risk_level}, Bayes: ${bayesToLevel(bayes.probability)}, LLM: ${llm.risk_level}`,
-                resolution: 'needs_review',
-            },
         };
+    }
+
+    const allDifferent = ruleLevel !== llmLevel && llmLevel !== bayesLevel && ruleLevel !== bayesLevel;
+    const ruleVsLlm = ruleLevel !== llmLevel && ruleLevel === bayesLevel;
+    const bayesVsRule = ruleLevel !== bayesLevel && ruleLevel === llmLevel;
+
+    let conflictType: 'rule_vs_llm' | 'bayes_vs_rule' | 'all_conflict';
+    let resolution: 'defer_to_rule' | 'defer_to_llm' | 'needs_review';
+
+    if (allDifferent) {
+        conflictType = 'all_conflict';
+        resolution = 'needs_review';
+    } else if (ruleVsLlm) {
+        conflictType = 'rule_vs_llm';
+        resolution = rule.priority >= 70 ? 'defer_to_rule' : 'needs_review';
+    } else if (bayesVsRule) {
+        conflictType = 'bayes_vs_rule';
+        resolution = 'needs_review';
+    } else {
+        conflictType = 'all_conflict';
+        resolution = 'needs_review';
     }
 
     return {
         risk_level: finalLevel,
-        confidence: Math.min(1, confidence),
+        confidence: 0.4,
         components: {
             rule_based: rule,
             bayesian: { probability: bayes.probability, trend: bayes.trend },
             llm: { risk_level: llm.risk_level, reason: llm.reason, key_signals: llm.key_signals ?? [] },
+        },
+        disagreement_flag: {
+            type: conflictType,
+            details: `Rule: ${ruleLevel}, Bayes: ${bayesLevel}, LLM: ${llmLevel}`,
+            resolution,
         },
     };
 }
