@@ -1,7 +1,12 @@
 /// <reference types="@jest/globals" />
 
 const MOCK_MEMORY_MD = '你是一个课程记忆管理助手。';
-const MOCK_LLM_RESPONSE = { updates: [{ course_name: 'test' }], message: 'test message' };
+const MOCK_LLM_RESPONSE = {
+    updates: [{ course_name: 'test', fields_to_update: { teacher_attitude: '严抓' } }],
+    summary: '已更新1门课程',
+    detected_patterns: ['每周三点名'],
+    suggested_actions: ['增加到课频率'],
+};
 
 jest.mock('@/lib/llm', () => ({
     __esModule: true,
@@ -14,7 +19,34 @@ jest.mock('fs', () => ({
 }));
 
 import { chatCompletionJSON } from '@/lib/llm';
-import { parseUserInput } from '@/agents/memory';
+import { parseUserInput, MemoryOutputSchema } from '@/agents/memory';
+
+describe('MemoryOutputSchema', () => {
+    it('rejects output missing required summary field', () => {
+        const result = MemoryOutputSchema.safeParse({
+            updates: [],
+        });
+        expect(result.success).toBe(false);
+    });
+
+    it('accepts output with updates and summary fields', () => {
+        const result = MemoryOutputSchema.safeParse({
+            updates: [{ course_name: '高数', teacher_attitude: '严抓' }],
+            summary: '已更新1门课程',
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts output with all optional fields', () => {
+        const result = MemoryOutputSchema.safeParse({
+            updates: [{ course_name: '高数', fields_to_update: { teacher_attitude: '严抓' } }],
+            summary: '已更新1门课程',
+            detected_patterns: ['每周三点名'],
+            suggested_actions: ['增加高数到课频率'],
+        });
+        expect(result.success).toBe(true);
+    });
+});
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -22,7 +54,7 @@ beforeEach(() => {
 });
 
 describe('parseUserInput', () => {
-    it('returns updates and message from chatCompletionJSON', async () => {
+    it('returns updates and summary from chatCompletionJSON', async () => {
         const result = await parseUserInput('test input');
         expect(result).toEqual(MOCK_LLM_RESPONSE);
     });

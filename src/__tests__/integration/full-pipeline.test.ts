@@ -9,8 +9,8 @@ jest.mock('@/agents/supervisor', () => ({
 
 jest.mock('@/db/memory', () => ({
     getAllCourseSnapshots: jest.fn(() => [
-        { courseId: 1, snapshot: '{"name":"Course A","schedule_id":1,"schedule_day":1,"schedule_period":"早一","schedule_weeks":[1,2,3],"course_type":"水课","study_mode":"上课学习"}' },
-        { courseId: 2, snapshot: '{"name":"Course B","schedule_id":2,"schedule_day":2,"schedule_period":"午一","schedule_weeks":[1,2,3],"course_type":"专业课","study_mode":"上课学习"}' },
+        { course_id: 1, course_name: 'Course A', snapshot_data: '{"name":"Course A","course_type":"水课","study_mode":"上课学习","schedules":[{"schedule_id":1,"day":1,"period":"早一","weeks":[1,2,3]}]}' },
+        { course_id: 2, course_name: 'Course B', snapshot_data: '{"name":"Course B","course_type":"专业课","study_mode":"上课学习","schedules":[{"schedule_id":2,"day":2,"period":"午一","weeks":[1,2,3]}]}' },
     ]),
     updateCourseMemory: jest.fn(),
 }));
@@ -148,8 +148,8 @@ describe('Full pipeline integration', () => {
         (buildSupervisorSystemPrompt as jest.Mock).mockReset();
 
         (getAllCourseSnapshots as jest.Mock).mockReturnValue([
-            { courseId: 1, snapshot: '{"name":"Course A","schedule_id":1,"schedule_day":1,"schedule_period":"早一","schedule_weeks":[1,2,3],"course_type":"水课","study_mode":"上课学习"}' },
-            { courseId: 2, snapshot: '{"name":"Course B","schedule_id":2,"schedule_day":2,"schedule_period":"午一","schedule_weeks":[1,2,3],"course_type":"专业课","study_mode":"上课学习"}' },
+            { course_id: 1, course_name: 'Course A', snapshot_data: '{"name":"Course A","schedule_id":1,"schedule_day":1,"schedule_period":"早一","schedule_weeks":[1,2,3],"course_type":"水课","study_mode":"上课学习"}' },
+            { course_id: 2, course_name: 'Course B', snapshot_data: '{"name":"Course B","schedule_id":2,"schedule_day":2,"schedule_period":"午一","schedule_weeks":[1,2,3],"course_type":"专业课","study_mode":"上课学习"}' },
         ]);
         (getLatestSession as jest.Mock).mockReturnValue(null);
         (createSession as jest.Mock).mockReturnValue(1);
@@ -172,8 +172,8 @@ describe('Full pipeline integration', () => {
         (buildPlanContext as jest.Mock).mockReturnValue(MOCK_CONTEXT);
         (generatePlan as jest.Mock).mockResolvedValue({
             actions: [
-                { schedule_id: 1, action: '逃课', reason: '水课低风险' },
-                { schedule_id: 2, action: '上课', reason: '专业课必须到' },
+                { schedule_id: 1, week: 1, action: '逃课', reason: '水课低风险' },
+                { schedule_id: 2, week: 1, action: '上课', reason: '专业课必须到' },
             ],
         });
         (runSelfChecks as jest.Mock).mockReturnValue(ALL_PASSED_CHECKS);
@@ -232,8 +232,8 @@ describe('Full pipeline integration', () => {
         (buildPlanContext as jest.Mock).mockReturnValue(MOCK_CONTEXT);
         (generatePlan as jest.Mock).mockResolvedValue({
             actions: [
-                { schedule_id: 1, action: '逃课', reason: 'ok' },
-                { schedule_id: 2, action: '上课', reason: 'default risk' },
+                { schedule_id: 1, week: 1, action: '逃课', reason: 'ok' },
+                { schedule_id: 2, week: 1, action: '上课', reason: 'default risk' },
             ],
         });
         (runSelfChecks as jest.Mock).mockReturnValue(ALL_PASSED_CHECKS);
@@ -269,8 +269,8 @@ describe('Full pipeline integration', () => {
         (buildPlanContext as jest.Mock).mockReturnValue(MOCK_CONTEXT);
         (generatePlan as jest.Mock).mockResolvedValue({
             actions: [
-                { schedule_id: 1, action: '逃课', reason: 'too many skips' },
-                { schedule_id: 2, action: '逃课', reason: 'too many skips' },
+                { schedule_id: 1, week: 1, action: '逃课', reason: 'too many skips' },
+                { schedule_id: 2, week: 1, action: '逃课', reason: 'too many skips' },
             ],
         });
         (runSelfChecks as jest.Mock).mockReturnValue(ONE_FAILED_CHECK);
@@ -300,8 +300,8 @@ describe('Full pipeline integration', () => {
         (buildPlanContext as jest.Mock).mockReturnValue(MOCK_CONTEXT);
         (generatePlan as jest.Mock).mockResolvedValue({
             actions: [
-                { schedule_id: 1, action: '上课', reason: 'must attend' },
-                { schedule_id: 2, action: '逃课', reason: 'ok' },
+                { schedule_id: 1, week: 1, action: '上课', reason: 'must attend' },
+                { schedule_id: 2, week: 1, action: '逃课', reason: 'ok' },
             ],
         });
         (runSelfChecks as jest.Mock).mockReturnValue(ALL_PASSED_CHECKS);
@@ -329,8 +329,8 @@ describe('Full pipeline integration', () => {
         (buildPlanContext as jest.Mock).mockReturnValue(MOCK_CONTEXT);
         (generatePlan as jest.Mock).mockResolvedValue({
             actions: [
-                { schedule_id: 1, action: '上课', reason: 'default risk, play safe' },
-                { schedule_id: 2, action: '上课', reason: 'default risk, play safe' },
+                { schedule_id: 1, week: 1, action: '上课', reason: 'default risk, play safe' },
+                { schedule_id: 2, week: 1, action: '上课', reason: 'default risk, play safe' },
             ],
         });
         (runSelfChecks as jest.Mock).mockReturnValue(ALL_PASSED_CHECKS);

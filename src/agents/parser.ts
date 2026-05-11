@@ -14,6 +14,7 @@ export async function parseScheduleImage(
         userPrompt: '请解析这张课表图片',
         imageBase64,
         temperature: 0.3,
+        circuitKey: 'parser',
     });
 
     return {

@@ -9,6 +9,15 @@ export function insertImmediateFeedback(data: Omit<ImmediateFeedback, 'id' | 'cr
 }
 
 export function insertWeeklyFeedback(data: Omit<WeeklyFeedback, 'id' | 'created_at'>): number {
+    if (data.was_caught && data.caught_courses?.length) {
+        const updateStmt = db.prepare(
+            'UPDATE course SET current_caught_count = current_caught_count + 1 WHERE id = ?'
+        );
+        for (const courseId of data.caught_courses) {
+            updateStmt.run(courseId);
+        }
+    }
+
     const result = db.prepare(
         'INSERT INTO weekly_feedback (session_id, rating, was_caught, caught_courses, actual_events, memory_updates, comment) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).run(

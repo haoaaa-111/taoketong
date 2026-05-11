@@ -14,19 +14,17 @@ export interface SemesterStats {
 
 export async function compressSemester(
     snapshots: unknown[],
-    semesterId: string,
-    auxModel?: string
+    semesterId: string
 ): Promise<string> {
     const stats = extractStats(snapshots);
     const prompt = buildCompressionPrompt(stats, semesterId);
 
-    const model = auxModel || process.env.AUX_LLM_MODEL || process.env.LLM_MODEL || 'gpt-4o';
     const maxTokens = Math.min(SUMMARY_CEILING, Math.floor(prompt.length * SUMMARY_RATIO));
 
     const summary = await chatCompletion({
         systemPrompt: '你是一个数据总结助手，负责将学期逃课数据压缩为简洁的统计摘要。',
         userPrompt: prompt,
-        model,
+        circuitKey: 'compressor',
         maxTokens,
     });
 
@@ -39,6 +37,19 @@ export function shouldCompress(content: string): boolean {
 
 export function estimateSnapshotSize(data: unknown): number {
     return JSON.stringify(data).length;
+}
+
+/**
+ * Calculate observation weight with exponential decay for old observations.
+ * - Observations ≤4 weeks old get max weight (2.0).
+ * - Older observations decay exponentially: 2.0 * exp(-0.15 * (age - 4)).
+ * - Weight never falls below 0.3.
+ */
+export function decayWeight(observationWeek: number, currentWeek: number): number {
+    const age = Math.max(0, currentWeek - observationWeek);
+    if (age <= 4) return 2.0;
+    const weight = 2.0 * Math.exp(-0.15 * (age - 4));
+    return Math.max(0.3, weight);
 }
 
 function extractStats(snapshots: unknown[]): SemesterStats {

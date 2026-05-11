@@ -12,6 +12,7 @@ import { SessionGenerationError } from './session-error';
 import crypto from 'crypto';
 import { logger, setTraceId } from '@/lib/logger';
 import { recordSessionMetrics } from '@/lib/metrics';
+import { resetSessionTokens, getSessionTokens } from '@/lib/llm';
 import type { PlanAction, StructuredPlanContext } from '@/types';
 
 export interface SessionInput {
@@ -27,9 +28,13 @@ export async function generateSession(input: SessionInput): Promise<{
 }> {
     const traceId = crypto.randomUUID();
     setTraceId(traceId);
+    resetSessionTokens();
     const startTime = Date.now();
     const t0 = Date.now();
-    const courses = dbMemory.getAllCourseSnapshots();
+    const courses = dbMemory.getAllCourseSnapshots().map(c => ({
+        courseId: c.course_id,
+        snapshot: c.snapshot_data,
+    }));
     if (!courses || courses.length === 0) {
         throw new SessionGenerationError('No courses available for plan generation', {
             code: 'EMPTY_COURSES', suggestion: '请先通过课表导入添加课程',
@@ -45,7 +50,7 @@ export async function generateSession(input: SessionInput): Promise<{
         logger.warn('Orchestrator', 'Generated plan with 0 plan_weeks');
     }
 
-    const riskResults = await modelAllCourses(courses);
+    const riskResults = await modelAllCourses(courses, { current_week: config.current_week ?? 1 });
     const t2 = Date.now();
     const ctx = buildPlanContext(courses, profile, config, riskResults, input.constraints?.must_attend_ids);
     const plan = await generateWithRetry(ctx);
@@ -64,17 +69,20 @@ export async function generateSession(input: SessionInput): Promise<{
         const actions: PlanAction[] = plan.actions.map(a => {
             const id = dbSessions.insertAction({
                 session_id: sessionId, schedule_id: a.schedule_id,
+                week: a.week,
                 action: a.action as PlanAction['action'], reason: a.reason,
             });
             return { id, session_id: sessionId, schedule_id: a.schedule_id,
+                week: a.week,
                 action: a.action as PlanAction['action'], reason: a.reason };
         });
 
-        for (const c of courses) dbMemory.updateCourseMemory(c.courseId);
+        for (const c of courses) dbMemory.updateCourseMemory(c.courseId, riskResults);
         return { session_id: sessionId, actions };
     })();
 
     const t4 = Date.now();
+    const tokens = getSessionTokens();
     recordSessionMetrics({
         session_id: String(result.session_id),
         trace_id: traceId,
@@ -87,7 +95,7 @@ export async function generateSession(input: SessionInput): Promise<{
             rule_validation_ms: 0,
             persistence_ms: t4 - t3,
         },
-        token_usage: { modeler_input: 0, modeler_output: 0, supervisor_input: 0, supervisor_output: 0, total: 0 },
+        token_usage: { modeler_input: 0, modeler_output: 0, supervisor_input: 0, supervisor_output: 0, total: tokens.input + tokens.output },
         courses_count: courses.length,
         courses_failed: 0,
         retry_count: 0,
@@ -99,7 +107,7 @@ export async function generateSession(input: SessionInput): Promise<{
 }
 
 async function generateWithRetry(ctx: StructuredPlanContext): Promise<{
-    actions: Array<{ schedule_id: number; action: string; reason: string }>;
+    actions: Array<{ schedule_id: number; week: number; action: string; reason: string }>;
 }> {
     let temp = getAdaptiveTemperature(ctx);
     for (let i = 0; i < MAX_RETRIES; i++) {

@@ -144,12 +144,10 @@ export class SkipClassCurator {
     }
 
     private async generateInsights(acc: number | null, prec: number | null): Promise<string[]> {
-        const auxModel = process.env.AUX_LLM_MODEL;
         try {
             const result = await chatCompletion({
                 systemPrompt: '你是一个教学质量评估助手。',
                 userPrompt: `根据以下数据生成改进建议：方案接受率=${acc ?? 'N/A'}%，准确率=${prec ?? 'N/A'}%。请返回不超过3条建议。`,
-                model: auxModel,
                 temperature: 0.3,
                 circuitKey: 'curator-review',
             });

@@ -4,15 +4,15 @@ import type { PlanSession, PlanAction } from '@/types';
 export function createSessionWithActions(data: { plan_start_date: string; plan_end_date: string }, actions: Omit<PlanAction, 'id'>[]): number {
     const transaction = db.transaction(() => {
         const sessionResult = db.prepare(
-            'INSERT INTO plan_session (plan_start_date, plan_end_date, status) VALUES (?, ?, "draft")'
+            "INSERT INTO plan_session (plan_start_date, plan_end_date, status) VALUES (?, ?, 'draft')"
         ).run(data.plan_start_date, data.plan_end_date);
         
         const sessionId = sessionResult.lastInsertRowid as number;
         
         for (const actionData of actions) {
             db.prepare(
-                'INSERT INTO plan_action (session_id, schedule_id, action, reason) VALUES (?, ?, ?, ?)'
-            ).run(sessionId, actionData.schedule_id, actionData.action, actionData.reason);
+                'INSERT INTO plan_action (session_id, schedule_id, week, action, reason) VALUES (?, ?, ?, ?, ?)'
+            ).run(sessionId, actionData.schedule_id, actionData.week, actionData.action, actionData.reason);
         }
         
         return sessionId;
@@ -39,7 +39,7 @@ export function getLatestSession(): { session: PlanSession; actions: PlanAction[
 
 export function createSession(data: { plan_start_date: string; plan_end_date: string }): number {
     const result = db.prepare(
-        'INSERT INTO plan_session (plan_start_date, plan_end_date, status) VALUES (?, ?, "draft")'
+        "INSERT INTO plan_session (plan_start_date, plan_end_date, status) VALUES (?, ?, 'draft')"
     ).run(data.plan_start_date, data.plan_end_date);
     return result.lastInsertRowid as number;
 }
@@ -57,8 +57,8 @@ export function acceptSession(id: number): void {
 
 export function insertAction(data: Omit<PlanAction, 'id'>): number {
     const result = db.prepare(
-        'INSERT INTO plan_action (session_id, schedule_id, action, reason) VALUES (?, ?, ?, ?)'
-    ).run(data.session_id, data.schedule_id, data.action, data.reason);
+        'INSERT INTO plan_action (session_id, schedule_id, week, action, reason) VALUES (?, ?, ?, ?, ?)'
+    ).run(data.session_id, data.schedule_id, data.week, data.action, data.reason);
     return result.lastInsertRowid as number;
 }
 

@@ -36,13 +36,13 @@ describe('Bug #3: LEFT JOIN preserves session data after course deletion', () =>
         `).run());
 
         db.prepare(`
-            INSERT INTO plan_action (session_id, schedule_id, action, reason)
-            VALUES (?, ?, '逃课', 'action1')
+            INSERT INTO plan_action (session_id, schedule_id, week, action, reason)
+            VALUES (?, ?, 1, '逃课', 'action1')
         `).run(sessionId, schedule1);
 
         db.prepare(`
-            INSERT INTO plan_action (session_id, schedule_id, action, reason)
-            VALUES (?, ?, '上课', 'action2')
+            INSERT INTO plan_action (session_id, schedule_id, week, action, reason)
+            VALUES (?, ?, 1, '上课', 'action2')
         `).run(sessionId, schedule2);
     });
 

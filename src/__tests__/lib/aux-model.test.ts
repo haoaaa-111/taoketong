@@ -1,37 +1,50 @@
 import { describe, it, expect, afterEach } from '@jest/globals';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { getAgentModel } from '@/lib/llm';
 
-describe('Auxiliary Model Integration', () => {
+describe('getAgentModel — executor and compressor circuitKeys', () => {
     const originalEnv = { ...process.env };
 
     afterEach(() => {
         process.env = { ...originalEnv };
     });
 
-    it('chatCompletion accepts optional model parameter', () => {
-        const opts = {
-            systemPrompt: 'test',
-            userPrompt: 'test',
-            model: 'gpt-4o-mini',
-        };
-        expect(opts.model).toBe('gpt-4o-mini');
+    describe('curator-review (executor)', () => {
+        it('returns CURATOR_LLM_MODEL when set', () => {
+            process.env.CURATOR_LLM_MODEL = 'custom-curator-model';
+            process.env.LLM_MODEL = 'base-model';
+            expect(getAgentModel('curator-review')).toBe('custom-curator-model');
+        });
+
+        it('falls back to LLM_MODEL when CURATOR_LLM_MODEL is not set', () => {
+            delete process.env.CURATOR_LLM_MODEL;
+            process.env.LLM_MODEL = 'base-model';
+            expect(getAgentModel('curator-review')).toBe('base-model');
+        });
+
+        it('falls back to gpt-4o when neither CURATOR_LLM_MODEL nor LLM_MODEL is set', () => {
+            delete process.env.CURATOR_LLM_MODEL;
+            delete process.env.LLM_MODEL;
+            expect(getAgentModel('curator-review')).toBe('gpt-4o');
+        });
     });
 
-    it('Curator should import chatCompletion for LLM-powered insights', () => {
-        const curatorSrc = readFileSync(
-            join(process.cwd(), 'src/agents/curator.ts'),
-            'utf-8'
-        );
-        expect(curatorSrc).toContain("from '@/lib/llm'");
-        expect(curatorSrc).toContain('AUX_LLM_MODEL');
-    });
+    describe('compressor', () => {
+        it('returns COMPRESSOR_LLM_MODEL when set', () => {
+            process.env.COMPRESSOR_LLM_MODEL = 'custom-compressor-model';
+            process.env.LLM_MODEL = 'base-model';
+            expect(getAgentModel('compressor')).toBe('custom-compressor-model');
+        });
 
-    it('Compressor already supports AUX_LLM_MODEL fallback', () => {
-        const compressorSrc = readFileSync(
-            join(process.cwd(), 'src/agents/compressor.ts'),
-            'utf-8'
-        );
-        expect(compressorSrc).toContain('AUX_LLM_MODEL');
+        it('falls back to LLM_MODEL when COMPRESSOR_LLM_MODEL is not set', () => {
+            delete process.env.COMPRESSOR_LLM_MODEL;
+            process.env.LLM_MODEL = 'base-model';
+            expect(getAgentModel('compressor')).toBe('base-model');
+        });
+
+        it('falls back to gpt-4o when neither COMPRESSOR_LLM_MODEL nor LLM_MODEL is set', () => {
+            delete process.env.COMPRESSOR_LLM_MODEL;
+            delete process.env.LLM_MODEL;
+            expect(getAgentModel('compressor')).toBe('gpt-4o');
+        });
     });
 });

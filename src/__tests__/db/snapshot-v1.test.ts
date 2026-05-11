@@ -53,14 +53,13 @@ describe('Snapshot v1: generateCourseSnapshot output', () => {
         expect(data.rollcall_model.frequency_model.type).toMatch(/poisson|unknown/);
     });
 
-    it('should include caught_history with bayesian_posterior', () => {
+    it('caught_history should have total and trend, no bayesian_posterior', () => {
         const snapshotJson = generateCourseSnapshot(testCourseId);
         const data = JSON.parse(snapshotJson);
         expect(data.caught_history).toBeDefined();
-        expect(data.caught_history.bayesian_posterior).toBeDefined();
-        expect(data.caught_history.bayesian_posterior).toHaveProperty('alpha');
-        expect(data.caught_history.bayesian_posterior).toHaveProperty('beta');
-        expect(data.caught_history.bayesian_posterior).toHaveProperty('expected_probability');
+        expect(typeof data.caught_history.total).toBe('number');
+        expect(data.caught_history.trend).toBeDefined();
+        expect(data.caught_history.bayesian_posterior).toBeUndefined();
     });
 
     it('should include risk_signals array', () => {
@@ -143,13 +142,8 @@ function createTestSnapshotV1() {
         },
         caught_history: {
             total: 1,
-            by_week: { '3': 1 },
+            by_week: {},
             trend: 'stable' as const,
-            bayesian_posterior: {
-                alpha: 2,
-                beta: 8,
-                expected_probability: 0.2,
-            },
         },
         risk_signals: [
             { type: '点名频率', weeks: [3], severity: 'low' as const, confidence: 0.6 },

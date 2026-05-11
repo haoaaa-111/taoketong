@@ -8,9 +8,11 @@ const SYSTEM_PROMPT = SYSTEM_SAFETY_PREFIX + readFileSync(
     'utf-8'
 );
 
-const MemoryOutputSchema = z.object({
+export const MemoryOutputSchema = z.object({
     updates: z.array(z.record(z.string(), z.unknown())),
-    message: z.string(),
+    summary: z.string(),
+    detected_patterns: z.array(z.unknown()).optional(),
+    suggested_actions: z.array(z.string()).optional(),
 });
 
 export type MemoryOutput = z.infer<typeof MemoryOutputSchema>;
@@ -22,5 +24,6 @@ export async function parseUserInput(
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: wrapUserInput(userInput),
         schema: MemoryOutputSchema,
+        circuitKey: 'memory',
     });
 }

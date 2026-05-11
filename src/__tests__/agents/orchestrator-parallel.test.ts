@@ -4,8 +4,8 @@ import { join } from 'path';
 
 jest.mock('@/db/memory', () => ({
     getAllCourseSnapshots: jest.fn(() => [
-        { courseId: 1, snapshot: '{"name":"Course A"}' },
-        { courseId: 2, snapshot: '{"name":"Course B"}' },
+        { course_id: 1, course_name: 'Course A', snapshot_data: '{"name":"Course A"}' },
+        { course_id: 2, course_name: 'Course B', snapshot_data: '{"name":"Course B"}' },
     ]),
     updateCourseMemory: jest.fn(),
 }));
@@ -36,8 +36,8 @@ jest.mock('@/agents/modeler', () => ({
 jest.mock('@/agents/supervisor', () => ({
     generatePlan: jest.fn().mockResolvedValue({
         actions: [
-            { schedule_id: 1, action: '逃课', reason: 'reason1' },
-            { schedule_id: 2, action: '上课', reason: 'reason2' },
+            { schedule_id: 1, week: 1, action: '逃课', reason: 'reason1' },
+            { schedule_id: 2, week: 1, action: '上课', reason: 'reason2' },
         ],
     }),
     getAdaptiveTemperature: jest.fn(() => 0.8),

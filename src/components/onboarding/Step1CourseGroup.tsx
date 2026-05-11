@@ -124,7 +124,26 @@ export default function Step1CourseGroup({ group, sessionGroups, onGroupChange, 
                                 <span className="font-medium text-gray-200 whitespace-nowrap">
                                     {DAY_NAMES[s.day_of_week - 1]} {s.period_slot}
                                 </span>
-                                <span className="text-gray-500">第 {s.weeks.join(', ')} 周</span>
+                                <span className="text-gray-500">第 </span>
+                                <input
+                                    className="bg-gray-900 border border-gray-700 rounded px-1 py-0.5 text-sm w-28 text-center text-gray-300"
+                                    defaultValue={s.weeks.join(',')}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onBlur={(e) => {
+                                        const weeks = e.target.value.split(/[，,、]/).map(Number).filter(n => !isNaN(n) && n > 0);
+                                        if (weeks.length > 0) commitSession(idx, 'weeks', weeks);
+                                        else e.target.value = s.weeks.join(',');
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            const input = e.currentTarget as HTMLInputElement;
+                                            const weeks = input.value.split(/[，,、]/).map(Number).filter(n => !isNaN(n) && n > 0);
+                                            if (weeks.length > 0) commitSession(idx, 'weeks', weeks);
+                                            input.blur();
+                                        }
+                                    }}
+                                />
+                                <span className="text-gray-500"> 周</span>
                                 <select
                                     value={s.sessionGroup}
                                     className="ml-auto bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"

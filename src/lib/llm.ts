@@ -1,10 +1,40 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
+import { wrapOpenAIClient } from './langfuse';
 
 let consecutiveFailures = 0;
 let circuitBreakerUntil: number | null = null;
 const FAILURE_THRESHOLD = 5;
 const COOLDOWN_MS = 60_000;
+
+const AGENT_ENV_MAP: Record<string, string> = {
+    'supervisor': 'SUPERVISOR_LLM_MODEL',
+    'modeler': 'MODELER_LLM_MODEL',
+    'memory': 'MEMORY_LLM_MODEL',
+    'parser': 'PARSER_LLM_MODEL',
+    'compressor': 'COMPRESSOR_LLM_MODEL',
+    'curator-review': 'CURATOR_LLM_MODEL',
+};
+
+let sessionTokens = { input: 0, output: 0 };
+
+export function getAgentModel(circuitKey?: string): string {
+    if (circuitKey) {
+        const envKey = AGENT_ENV_MAP[circuitKey];
+        if (envKey && process.env[envKey]) {
+            return process.env[envKey]!;
+        }
+    }
+    return process.env.LLM_MODEL || 'gpt-4o';
+}
+
+export function resetSessionTokens(): void {
+    sessionTokens = { input: 0, output: 0 };
+}
+
+export function getSessionTokens(): { input: number; output: number } {
+    return { ...sessionTokens };
+}
 
 function checkCircuitBreaker(): void {
     if (circuitBreakerUntil && Date.now() < circuitBreakerUntil) {
@@ -27,7 +57,7 @@ function recordFailure(): void {
     }
 }
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 1;
 const BASE_DELAY_MS = 1000;
 const MAX_DELAY_MS = 5000;
 const JITTER_FACTOR = 0.2;
@@ -42,20 +72,40 @@ function getBackoffDelay(retryCount: number): number {
     return Math.max(0, base + jitter);
 }
 
-let openaiClient: OpenAI | null = null;
+let rawClient: OpenAI | null = null;
+let wrappedClientPromise: Promise<OpenAI> | null = null;
+let tracingModule: typeof import('@langfuse/tracing') | null = null;
 
-export function getLLMClient(): OpenAI {
-    if (!openaiClient) {
-        const baseClient = new OpenAI({
+function getOpenAIClient(): OpenAI {
+    if (!rawClient) {
+        rawClient = new OpenAI({
             apiKey: process.env.LLM_API_KEY,
             baseURL: process.env.LLM_BASE_URL,
-            timeout: 30_000,
+            timeout: 300_000,
             maxRetries: 0,
         });
-
-        openaiClient = baseClient;
     }
-    return openaiClient;
+    return rawClient;
+}
+
+async function getLLMClient(): Promise<OpenAI> {
+    if (!wrappedClientPromise) {
+        wrappedClientPromise = (async () => {
+            return await wrapOpenAIClient(getOpenAIClient());
+        })();
+    }
+    return wrappedClientPromise;
+}
+
+async function getTracingModule() {
+    if (tracingModule === undefined) {
+        try {
+            tracingModule = await import('@langfuse/tracing');
+        } catch {
+            tracingModule = null;
+        }
+    }
+    return tracingModule;
 }
 
 export interface ChatCompletionOptions {
@@ -72,8 +122,10 @@ export interface ChatCompletionOptions {
 export async function chatCompletion(options: ChatCompletionOptions): Promise<string> {
     checkCircuitBreaker();
 
-    const openai = getLLMClient();
-    const model = options.model || process.env.LLM_MODEL || 'gpt-4o';
+    const openai = await getLLMClient();
+    const model = options.model || getAgentModel(options.circuitKey);
+    const agentName = options.circuitKey || 'llm';
+    const tracing = await getTracingModule();
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: 'system', content: options.systemPrompt },
@@ -94,37 +146,64 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<st
         messages.push({ role: 'user', content: options.userPrompt });
     }
 
-    let lastError: Error | null = null;
+    const doCompletion = async (): Promise<string> => {
+        let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        if (attempt > 0) {
-            await delay(getBackoffDelay(attempt - 1));
-            checkCircuitBreaker();
-        }
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            if (attempt > 0) {
+                await delay(getBackoffDelay(attempt - 1));
+                checkCircuitBreaker();
+            }
 
-        try {
-            const response = await openai.chat.completions.create({
-                model,
-                messages,
-                temperature: options.temperature ?? 0.7,
-                max_tokens: options.maxTokens ?? 4096,
-            });
+            try {
+                const stream = await openai.chat.completions.create({
+                    model,
+                    messages,
+                    temperature: options.temperature ?? 0.7,
+                    ...(options.maxTokens ? { max_tokens: options.maxTokens } : {}),
+                    stream: true,
+                });
 
-            const content = response.choices[0]?.message?.content || '';
-            recordSuccess();
-            return content;
-        } catch (e) {
-            lastError = e as Error;
-            recordFailure();
+                let content = '';
+                let inputTokens = 0, outputTokens = 0;
+                for await (const chunk of stream) {
+                    const delta = chunk.choices[0]?.delta as Record<string, unknown>;
+                    if (typeof delta?.reasoning_content === 'string' && process.env.LLM_DEBUG) {
+                        process.stderr.write(delta.reasoning_content as string);
+                    }
+                    if (typeof delta?.content === 'string') content += delta.content;
+                    if (chunk.usage) {
+                        inputTokens = chunk.usage.prompt_tokens || 0;
+                        outputTokens = chunk.usage.completion_tokens || 0;
+                    }
+                }
 
-            if (e instanceof OpenAI.AuthenticationError ||
-                e instanceof OpenAI.BadRequestError) {
-                throw e;
+                sessionTokens.input += inputTokens;
+                sessionTokens.output += outputTokens;
+
+                recordSuccess();
+                return content;
+            } catch (e) {
+                lastError = e as Error;
+                recordFailure();
+
+                const msg = (e as Error).message || '';
+                if (msg.includes('524') || msg.includes('timeout') || msg.includes('ETIMEDOUT') ||
+                    e instanceof OpenAI.AuthenticationError ||
+                    e instanceof OpenAI.BadRequestError) {
+                    throw e;
+                }
             }
         }
+
+        throw new Error(`LLM调用失败: ${lastError?.message || '未知错误'}`);
+    };
+
+    if (tracing) {
+        return tracing.startActiveObservation(`llm-${agentName}`, doCompletion);
     }
 
-    throw new Error(`LLM调用失败: ${lastError?.message || '未知错误'}`);
+    return doCompletion();
 }
 
 export function extractJSON(text: string): string {
@@ -175,6 +254,10 @@ export async function chatCompletionJSON<T = Record<string, any>>(
             return parsed as T;
         } catch (e) {
             lastError = e as Error;
+            const msg = (e as Error).message || '';
+            if (msg.includes('524') || msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
+                throw e;
+            }
         }
     }
 

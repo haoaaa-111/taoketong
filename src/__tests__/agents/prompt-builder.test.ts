@@ -27,22 +27,19 @@ describe('buildSupervisorSystemPrompt', () => {
         expect(prompt.length).toBeGreaterThan(100);
     });
 
-    it('should contain all 6 layers', () => {
+    it('should contain only dynamic content blocks, no instruction layers', () => {
         const prompt = buildSupervisorSystemPrompt(minimalContext);
 
-        // Layer markers (check for section content)
-        const layerChecks = [
-            '排课主管',            // Layer 1: Identity
-            '学期',               // Layer 2: Context
-            'course-memory',      // Layer 3: Memory block
-            'risk-assessment',    // Layer 4: Risk block
-            '规则',               // Layer 5: Self-check rules
-            '行为',               // Layer 6: Behavior guidance
-        ];
+        // Dynamic data blocks that SHOULD be present
+        expect(prompt).toContain('学期');
+        expect(prompt).toContain('course-memory');
+        expect(prompt).toContain('risk-assessment');
 
-        for (const check of layerChecks) {
-            expect(prompt.toLowerCase()).toContain(check.toLowerCase());
-        }
+        // Instruction content now lives solely in prompts/supervisor.md (system prompt)
+        // — these should NOT appear in the user prompt built here
+        expect(prompt).not.toContain('排课主管');
+        expect(prompt).not.toContain('自检规则');
+        expect(prompt).not.toContain('输出行为规范');
     });
 
     it('should fence memory blocks with appropriate tags', () => {
@@ -86,5 +83,38 @@ describe('buildSupervisorSystemPrompt', () => {
 
         // Most lines should be unique (allow some structure duplication)
         expect(uniqueLines.size).toBeGreaterThan(nonEmptyLines.length * 0.7);
+    });
+
+    it('should display schedule day and period to differentiate course sessions', () => {
+        const ctx = {
+            ...minimalContext,
+            courses: [
+                {
+                    schedule_id: 10, course_id: 1, course_name: '高数',
+                    course_type: '专业课', study_mode: '上课学习',
+                    schedule_day: 2, schedule_period: '早一',
+                    schedule_weeks: [1, 2, 3, 4],
+                    risk_result: { risk_level: '中风险' as const, risk_reason: '偶尔', next_caught_probability: 0.3 },
+                    rollcall_info: { method: '抽点', frequency: '偶尔' },
+                    is_first_class: false, constraints: [],
+                },
+                {
+                    schedule_id: 11, course_id: 1, course_name: '高数',
+                    course_type: '专业课', study_mode: '上课学习',
+                    schedule_day: 4, schedule_period: '午二',
+                    schedule_weeks: [1, 2, 3, 4],
+                    risk_result: { risk_level: '中风险' as const, risk_reason: '偶尔', next_caught_probability: 0.3 },
+                    rollcall_info: { method: '抽点', frequency: '偶尔' },
+                    is_first_class: false, constraints: [],
+                },
+            ],
+        };
+
+        const prompt = buildSupervisorSystemPrompt(ctx);
+
+        expect(prompt).toContain('周二');
+        expect(prompt).toContain('早一');
+        expect(prompt).toContain('周四');
+        expect(prompt).toContain('午二');
     });
 });

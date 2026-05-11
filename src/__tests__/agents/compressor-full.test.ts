@@ -16,20 +16,20 @@ describe('Course History Compression', () => {
 
     it('compressSemester should produce output with semester identifier', async () => {
         const snapshots = [{}];
-        const result = await compressSemester(snapshots, '2025-Fall', 'gpt-4o-mini');
+        const result = await compressSemester(snapshots, '2025-Fall');
         expect(result).toContain('[COMPRESSED SEMESTER 2025-Fall]');
         expect(typeof result).toBe('string');
     });
 
-    it('compressSemester should use auxiliary model when configured', async () => {
-        process.env.AUX_LLM_MODEL = 'gpt-4o-mini';
+    it('uses COMPRESSOR_LLM_MODEL env var', async () => {
+        process.env.COMPRESSOR_LLM_MODEL = 'gpt-4o-mini';
         const result = await compressSemester([{}], '2025-Spring');
         expect(result).toBeDefined();
-        delete process.env.AUX_LLM_MODEL;
+        delete process.env.COMPRESSOR_LLM_MODEL;
     });
 
-    it('should fall back to main model when AUX_LLM_MODEL is unset', async () => {
-        delete process.env.AUX_LLM_MODEL;
+    it('falls back to LLM_MODEL when COMPRESSOR_LLM_MODEL is unset', async () => {
+        delete process.env.COMPRESSOR_LLM_MODEL;
         process.env.LLM_MODEL = 'gpt-4o';
         const result = await compressSemester([{}], '2025-Spring');
         expect(result).toBeDefined();
@@ -51,8 +51,8 @@ describe('Course History Compression', () => {
         expect(size).toBe(JSON.stringify(data).length);
     });
 
-    it('should fall back to default gpt-4o when all model env vars are unset (line 23 branch)', async () => {
-        delete process.env.AUX_LLM_MODEL;
+    it('falls back to gpt-4o when all model env vars are unset', async () => {
+        delete process.env.COMPRESSOR_LLM_MODEL;
         delete process.env.LLM_MODEL;
         const result = await compressSemester([{}], '2025-Spring');
         expect(result).toContain('[COMPRESSED SEMESTER 2025-Spring]');

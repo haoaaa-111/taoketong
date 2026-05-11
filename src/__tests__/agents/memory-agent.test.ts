@@ -1,19 +1,25 @@
 import { describe, it, expect, jest } from '@jest/globals';
 
 jest.mock('@/lib/llm', () => ({
-    chatCompletionJSON: jest.fn().mockResolvedValue({
-        updates: [
-            {
-                course_name: '高等数学',
-                fields_to_update: { rollcall_method: '签到', teacher_attitude: '严抓' },
-                confidence: 0.85,
-                requires_verification: false,
-                update_type: 'fact' as const,
-            },
-        ],
-        summary: 'Updated rollcall info for 高等数学',
-        detected_patterns: ['rollcall_frequency_increase'],
-        suggested_actions: ['monitor this course closely next week'],
+    chatCompletionJSON: jest.fn((opts: { userPrompt: string }) => {
+        const emptyWrapperPattern = /\[用户输入开始\]\s*\n\s*""\s*\n\s*\[用户输入结束\]/;
+        if (emptyWrapperPattern.test(opts.userPrompt)) {
+            return Promise.resolve({ updates: [], summary: 'No input provided', detected_patterns: [], suggested_actions: [] });
+        }
+        return Promise.resolve({
+            updates: [
+                {
+                    course_name: '高等数学',
+                    fields_to_update: { rollcall_method: '签到', teacher_attitude: '严抓' },
+                    confidence: 0.85,
+                    requires_verification: false,
+                    update_type: 'fact' as const,
+                },
+            ],
+            summary: 'Updated rollcall info for 高等数学',
+            detected_patterns: ['rollcall_frequency_increase'],
+            suggested_actions: ['monitor this course closely next week'],
+        });
     }),
 }));
 

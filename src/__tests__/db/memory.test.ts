@@ -76,3 +76,49 @@ describe('Bug #1: schedule_id in course snapshots', () => {
         }
     });
 });
+
+describe('Bug: Bayesian data pipeline — caught_history accuracy', () => {
+    let courseId: number;
+
+    beforeAll(() => {
+        initDatabase();
+        const result = db.prepare(`
+            INSERT INTO course (name, course_type, study_mode, current_caught_count)
+            VALUES ('CaughtCourse', '专业课', '上课学习', 5)
+        `).run();
+        courseId = result.lastInsertRowid as number;
+
+        db.prepare(`
+            INSERT INTO course_schedule (course_id, weeks, day_of_week, period_slot)
+            VALUES (?, '[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]', 1, '早一')
+        `).run(courseId);
+    });
+
+    afterAll(() => {
+        db.prepare('DELETE FROM course_memory WHERE course_id = ?').run(courseId);
+        db.prepare('DELETE FROM course_schedule WHERE course_id = ?').run(courseId);
+        db.prepare('DELETE FROM course WHERE id = ?').run(courseId);
+    });
+
+    it('caught_history.total should equal course.current_caught_count', () => {
+        const snapshot = generateCourseSnapshot(courseId);
+        const data = JSON.parse(snapshot);
+
+        expect(data.caught_history).toBeDefined();
+        expect(data.caught_history.total).toBe(5);
+    });
+
+    it('caught_history should NOT contain bayesian_posterior', () => {
+        const snapshot = generateCourseSnapshot(courseId);
+        const data = JSON.parse(snapshot);
+
+        expect(data.caught_history.bayesian_posterior).toBeUndefined();
+    });
+
+    it('caught_history should still contain trend field', () => {
+        const snapshot = generateCourseSnapshot(courseId);
+        const data = JSON.parse(snapshot);
+
+        expect(data.caught_history.trend).toBeDefined();
+    });
+});

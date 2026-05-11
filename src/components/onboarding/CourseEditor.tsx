@@ -71,17 +71,6 @@ export default function CourseEditor({
         update({ rollcall_methods: methods });
     };
 
-    const getEffectiveSchedule = () => {
-        if (form.schedules.length > 0) return form.schedules;
-        return [{ weeks: course.weeks, day_of_week: course.day_of_week, period_slot: course.period_slot }];
-    };
-
-    const updateSchedule = (idx: number, field: string, value: any) => {
-        const schedules = getEffectiveSchedule();
-        schedules[idx] = { ...schedules[idx], [field]: value };
-        update({ schedules });
-    };
-
     return (
         <div className="card space-y-6">
             <h2 className="text-xl font-bold">{course.name}</h2>
@@ -218,17 +207,6 @@ export default function CourseEditor({
                         onChange={(e) => update({ exam_weeks: { ...form.exam_weeks, final: e.target.value ? Number(e.target.value) : undefined } })}
                         className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" placeholder="无" />
                 </div>
-            </div>
-
-            <div>
-                <label className="text-gray-400 text-sm mb-1 block">排期修正（Parser 未能识别的周次信息）</label>
-                <input type="text" value={getEffectiveSchedule()[0]?.weeks.join(',')}
-                    onChange={(e) => {
-                        const weeks = e.target.value.split(/[，,、]/).map(Number).filter(n => !isNaN(n) && n > 0);
-                        updateSchedule(0, 'weeks', weeks.length > 0 ? weeks : [1]);
-                    }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm"
-                    placeholder="如: 1,2,3,5,6,7" />
             </div>
 
             <div>

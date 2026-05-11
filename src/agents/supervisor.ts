@@ -10,6 +10,7 @@ const SYSTEM_PROMPT = readFileSync(
 
 export const SupervisorActionSchema = z.object({
     schedule_id: z.number().int().positive(),
+    week: z.number().int().positive().optional(),
     action: z.enum(['上课', '逃课', '签退']),
     reason: z.string().min(1),
 });
@@ -30,6 +31,7 @@ export async function generatePlan(
         userPrompt: promptContext,
         temperature: temperature ?? 0.8,
         schema: SupervisorOutputSchema,
+        circuitKey: 'supervisor',
     });
     return result;
 }

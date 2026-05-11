@@ -75,8 +75,8 @@ describe('Bug #5: Modeler failure isolation', () => {
 
         (generatePlan as jest.Mock).mockResolvedValue({
             actions: [
-                { schedule_id: 1, action: '逃课', reason: 'reason1' },
-                { schedule_id: 2, action: '上课', reason: 'reason2' },
+                { schedule_id: 1, week: 1, action: '逃课', reason: 'reason1' },
+                { schedule_id: 2, week: 1, action: '上课', reason: 'reason2' },
             ],
         } as any);
 

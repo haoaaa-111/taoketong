@@ -2,7 +2,6 @@ import { NextResponse, NextRequest } from 'next/server';
 import { ensureDatabaseReady } from '@/db/init';
 import * as dbFeedback from '@/db/feedback';
 import * as dbMemory from '@/db/memory';
-import * as dbCourses from '@/db/courses';
 import { generateSession } from '@/agents/orchestrator';
 import { validateBody, WeeklyFeedbackSchema } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -40,22 +39,6 @@ export async function POST(request: NextRequest) {
 
         // Wrap all DB operations in transaction to maintain consistency
         const transaction = db.transaction(() => {
-            if (data.was_caught && data.caught_courses?.length) {
-                for (const courseId of data.caught_courses) {
-                    const course = dbCourses.getCourseById(courseId);
-                    if (course) {
-                        dbCourses.updateCourse(courseId, {
-                            current_caught_count: course.course.current_caught_count + 1,
-                        });
-                    }
-                }
-            }
-
-            const allSnapshots = dbMemory.getAllCourseSnapshots();
-            for (const s of allSnapshots) {
-                dbMemory.updateCourseMemory(s.course_id);
-            }
-
             dbFeedback.insertWeeklyFeedback({
                 session_id: data.session_id,
                 rating: data.rating ?? null,
@@ -65,6 +48,11 @@ export async function POST(request: NextRequest) {
                 memory_updates: data.memory_updates ?? null,
                 comment: data.comment ?? null,
             });
+
+            const allSnapshots = dbMemory.getAllCourseSnapshots();
+            for (const s of allSnapshots) {
+                dbMemory.updateCourseMemory(s.course_id);
+            }
         });
 
         transaction();

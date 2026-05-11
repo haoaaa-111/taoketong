@@ -6,12 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
-  },
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
     "lint": "eslint",
     "test": "jest"
   },
@@ -34,5 +28,10 @@
     "tailwindcss": "^4",
     "ts-jest": "^29.4.9",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@langfuse/openai": "^5.3.0",
+    "@langfuse/otel": "^5.3.0",
+    "@opentelemetry/sdk-trace-node": "^2.7.1"
   }
 }

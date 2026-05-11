@@ -139,13 +139,18 @@ export default function OnboardingStep3() {
                     <p className="text-gray-400">请逐门确认课程信息，每门课程的详细信息影响后续方案质量</p>
                 </div>
 
-                {courses.map((course, i) => (
-                    <CourseEditor
-                        key={i}
-                        course={course}
-                        onChange={(data) => handleCourseChange(course.name, data)}
-                    />
-                ))}
+                {(() => {
+                    const seen = new Set<string>();
+                    return courses
+                        .filter(c => seen.has(c.name) ? false : (seen.add(c.name), true))
+                        .map(course => (
+                            <CourseEditor
+                                key={course.name}
+                                course={course}
+                                onChange={(data) => handleCourseChange(course.name, data)}
+                            />
+                        ));
+                })()}
 
                 {error && (
                     <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300">

@@ -23,6 +23,7 @@ export async function modelCourseRisk(
         userPrompt: `课程信息：\n\n${courseSnapshot}`,
         temperature: 0.5,
         schema: ModelerOutputSchema,
+        circuitKey: 'modeler',
     });
     return result;
 }

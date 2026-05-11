@@ -1,5 +1,5 @@
 import type { StructuredPlanContext, CoursePlanInput, RollcallInfo } from '@/types';
-import type { ModelerOutput } from './modeler';
+import type { FusionResult } from './risk/fusion-layer';
 
 function parseExamWeeks(data: Record<string, unknown>): { mid?: number; final?: number } | null {
     const raw = data.exam_weeks;
@@ -24,32 +24,41 @@ function parseRollcallMethods(data: Record<string, unknown>): Array<{ method: st
 
 export function buildPlanContext(
     courses: Array<{ courseId: number; snapshot: string }>,
-    profile: { weekly_skip_target: number; escape_rush_accept: boolean },
+    profile: { weekly_skip_target: number; escape_rush_accept: boolean; plan_weeks?: number },
     config: { current_week: number | null; current_day_of_week: number | null },
-    riskResults: Record<number, ModelerOutput>,
+    riskResults: Record<number, FusionResult>,
     mustAttendIds?: number[],
 ): StructuredPlanContext {
     const currentWeek = config.current_week ?? 1;
-    const courseInputs: CoursePlanInput[] = courses.map((c, i) => {
+    const courseInputs: CoursePlanInput[] = courses.flatMap((c) => {
         const data = JSON.parse(c.snapshot);
         const risk = riskResults[c.courseId];
+        const schedules = data.schedules;
 
-        return {
-            schedule_id: data.schedule_id ?? i + 1,
+        if (!schedules || !Array.isArray(schedules) || schedules.length === 0) return [];
+
+        return schedules.map((s: { schedule_id: number; day: number; period: string; weeks: number[] }) => ({
+            schedule_id: s.schedule_id,
             course_id: c.courseId,
             course_name: data.name ?? '',
             course_type: data.course_type ?? '专业课',
             study_mode: data.study_mode ?? '上课学习',
-            schedule_day: data.schedule_day ?? 1,
-            schedule_period: data.schedule_period ?? '',
-            schedule_weeks: data.schedule_weeks ?? [],
+            schedule_day: s.day,
+            schedule_period: s.period,
+            schedule_weeks: s.weeks ?? [],
             risk_result: risk
-                ? { risk_level: risk.risk_level, risk_reason: risk.risk_reason, next_caught_probability: risk.next_caught_probability }
+                ? {
+                    risk_level: risk.risk_level,
+                    risk_reason: risk.components.llm.reason,
+                    next_caught_probability: risk.components.bayesian.probability,
+                    confidence: risk.confidence,
+                    disagreement_flag: risk.disagreement_flag,
+                }
                 : { risk_level: '中风险' as const, risk_reason: '待评估', next_caught_probability: 0.3 },
             rollcall_info: extractRollcall(data),
-            is_first_class: (data.schedule_weeks?.[0] ?? 0) === currentWeek,
+            is_first_class: (s.weeks?.[0] ?? 0) === currentWeek,
             constraints: mustAttendIds?.includes(c.courseId) ? ['必须到课'] : [],
-        };
+        }));
     });
 
     return {
@@ -73,6 +82,7 @@ export function buildPlanContext(
             total_weeks: 16,
         },
         courses: courseInputs,
+        plan_weeks: profile.plan_weeks ?? 1,
     };
 }
 

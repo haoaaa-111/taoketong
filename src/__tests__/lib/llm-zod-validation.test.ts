@@ -9,6 +9,7 @@ const ModelerOutputSchema = z.object({
 
 const SupervisorActionSchema = z.object({
     schedule_id: z.number().int().positive(),
+    week: z.number().int().positive(),
     action: z.enum(['上课', '逃课', '签退']),
     reason: z.string().min(1),
 });
@@ -62,8 +63,8 @@ describe('Task 0.5: Zod schema validation for LLM outputs', () => {
     it('SupervisorOutputSchema validates correct plan structure', () => {
         const valid = {
             actions: [
-                { schedule_id: 1, action: '逃课', reason: '水课+不点名' },
-                { schedule_id: 2, action: '上课', reason: '专业课+高风险' },
+                { schedule_id: 1, week: 1, action: '逃课', reason: '水课+不点名' },
+                { schedule_id: 2, week: 1, action: '上课', reason: '专业课+高风险' },
             ],
         };
         const result = SupervisorOutputSchema.parse(valid);
@@ -77,19 +78,19 @@ describe('Task 0.5: Zod schema validation for LLM outputs', () => {
 
     it('SupervisorOutputSchema rejects invalid action value', () => {
         expect(() => SupervisorOutputSchema.parse({
-            actions: [{ schedule_id: 1, action: '请假', reason: 'test' }],
+            actions: [{ schedule_id: 1, week: 1, action: '请假', reason: 'test' }],
         })).toThrow(z.ZodError);
     });
 
     it('SupervisorOutputSchema rejects missing schedule_id', () => {
         expect(() => SupervisorOutputSchema.parse({
-            actions: [{ action: '逃课', reason: 'test' }],
+            actions: [{ week: 1, action: '逃课', reason: 'test' }],
         })).toThrow(z.ZodError);
     });
 
     it('SupervisorOutputSchema rejects empty reason', () => {
         expect(() => SupervisorOutputSchema.parse({
-            actions: [{ schedule_id: 1, action: '逃课', reason: '' }],
+            actions: [{ schedule_id: 1, week: 1, action: '逃课', reason: '' }],
         })).toThrow();
     });
 

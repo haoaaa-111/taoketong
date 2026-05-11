@@ -1,7 +1,8 @@
 import { db } from './index';
 import { safeJsonParse } from './safe-json';
+import type { FusionResult } from '@/agents/risk/fusion-layer';
 
-export function generateCourseSnapshot(courseId: number): string {
+export function generateCourseSnapshot(courseId: number, riskResult?: FusionResult): string {
     const course = db.prepare('SELECT * FROM course WHERE id = ?').get(courseId) as Record<string, any>;
     if (!course) throw new Error(`Course ${courseId} not found`);
 
@@ -14,7 +15,7 @@ export function generateCourseSnapshot(courseId: number): string {
     ).all(courseId);
 
     const observations = memories.length;
-    const caughtWeeks: number[] = [];
+    const caughtTotal = (course.current_caught_count as number) || 0;
 
     const snapshotData = JSON.stringify({
         course_id: course.id,
@@ -42,17 +43,11 @@ export function generateCourseSnapshot(courseId: number): string {
             last_observed_week: 0,
         },
         caught_history: {
-            total: caughtWeeks.length,
-            by_week: Object.fromEntries(caughtWeeks.map((w: number) => [String(w), 1])),
-            trend: 'stable' as const,
-            bayesian_posterior: {
-                alpha: caughtWeeks.length + 1,
-                beta: Math.max(1, observations - caughtWeeks.length + 1),
-                expected_probability: observations > 0
-                    ? (caughtWeeks.length + 1) / (observations + 2)
-                    : 0.5,
-            },
+            total: caughtTotal,
+            by_week: {},
+            trend: riskResult?.components.bayesian.trend ?? 'stable' as const,
         },
+        bayesian_posterior: riskResult?.components.bayesian.probability,
         risk_signals: [] as Array<Record<string, unknown>>,
         memory_budget: {
             used_chars: 0,
@@ -79,8 +74,9 @@ export function getAllCourseSnapshots(): { course_id: number; course_name: strin
     return rows;
 }
 
-export function updateCourseMemory(courseId: number): void {
-    const snapshot = generateCourseSnapshot(courseId);
+export function updateCourseMemory(courseId: number, riskResults?: Record<number, FusionResult>): void {
+    const riskResult = riskResults?.[courseId];
+    const snapshot = generateCourseSnapshot(courseId, riskResult);
     const existing = db.prepare('SELECT id FROM course_memory WHERE course_id = ?').get(courseId);
 
     if (existing) {

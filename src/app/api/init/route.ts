@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseReady } from '@/db/init';
 import * as dbSessions from '@/db/sessions';
+import * as dbProfile from '@/db/profile';
 import { handleError } from '@/lib/errors';
 
 ensureDatabaseReady();
@@ -8,11 +9,13 @@ ensureDatabaseReady();
 export async function GET() {
     try {
         const latest = dbSessions.getLatestSession();
-        if (latest && (latest.session.status === 'draft' || latest.session.status === 'accepted')) {
+        const profile = dbProfile.getProfile();
+
+        if (profile?.has_completed_onboarding || latest) {
             return NextResponse.json({
                 has_data: true,
-                last_session: latest.session,
-                last_actions: latest.actions,
+                last_session: latest?.session ?? null,
+                last_actions: latest?.actions ?? [],
             });
         }
         return NextResponse.json({ has_data: false });

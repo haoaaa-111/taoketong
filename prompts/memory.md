@@ -25,9 +25,17 @@
             }
         }
     ],
-    "message": "已更新2门课程的信息"
+    "summary": "已更新2门课程的信息",
+    "detected_patterns": ["每周三点名次数明显增加"],
+    "suggested_actions": ["增加高数到课频率"]
 }
 ```
+
+## 字段说明
+- `updates`: 需要对课程做的修改列表，每项包含 `course_name`（课程名）和 `fields_to_update`（要更新的字段和值）
+- `summary`: 对本次更新的一句话总结
+- `detected_patterns`: （可选）从用户输入中发现的规律或模式，数组类型
+- `suggested_actions`: （可选）基于规律向用户建议的行动，数组类型
 
 ## 规则
 - 只修改用户明确提及或暗示的课程

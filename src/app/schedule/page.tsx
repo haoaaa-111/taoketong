@@ -10,6 +10,7 @@ interface PlanAction {
     id: number;
     session_id: number;
     schedule_id: number;
+    week: number;
     action: string;
     reason: string | null;
 }
@@ -63,7 +64,7 @@ export default function SchedulePage() {
             .then(([sessionData, coursesData]) => {
                 if (sessionData) {
                     setSession(sessionData.session);
-                    setActions(sessionData.actions);
+                    setActions(sessionData.actions.filter((a: PlanAction) => a.week === 1));
                 }
                 if (coursesData?.courses) {
                     const allCourses: Course[] = [];

@@ -2,7 +2,7 @@
 
 import type { StructuredPlanContext } from '@/types';
 
-type ActionEntry = { schedule_id: number; action: string; reason: string };
+type ActionEntry = { schedule_id: number; week: number; action: string; reason: string };
 
 export interface RuleCheckResult {
     rule_id: number;
@@ -28,20 +28,29 @@ export function runSelfChecks(
 ): RuleCheckResult[] {
     const checks: RuleCheckResult[] = [];
 
-    // Rule 1: 逃课数限制
-    const skipCount = actions.filter(a => a.action === '逃课').length;
-    checks.push({
-        rule_id: 1,
-        rule_name: '逃课数限制',
-        passed: skipCount <= context.user_profile.weekly_skip_target,
-        violations: skipCount > context.user_profile.weekly_skip_target
-            ? [{
+    // Rule 1: 逃课数限制 (per-week)
+    const weekSkipCounts = new Map<number, number>();
+    for (const a of actions) {
+        if (a.action === '逃课') {
+            weekSkipCounts.set(a.week, (weekSkipCounts.get(a.week) || 0) + 1);
+        }
+    }
+    const skipViolations: RuleViolation[] = [];
+    for (const [week, count] of weekSkipCounts) {
+        if (count > context.user_profile.weekly_skip_target) {
+            skipViolations.push({
                 schedule_id: -1,
                 action: '整体',
                 expected_action: `逃课≤${context.user_profile.weekly_skip_target}次`,
-                reason: `当前${skipCount}次`
-              }]
-            : []
+                reason: `第${week}周逃课${count}次，超过目标`
+            });
+        }
+    }
+    checks.push({
+        rule_id: 1,
+        rule_name: '逃课数限制',
+        passed: skipViolations.length === 0,
+        violations: skipViolations
     });
 
     // Rule 2: 高风险专业课 + 上课学习 → 必须到课
@@ -101,12 +110,12 @@ export function runSelfChecks(
         violations: examViolations
     });
 
-    // Rule 5: 第一次课 → 上课
+    // Rule 5: 第一次课 → 上课 (per-week: check if action.week is first of schedule_weeks)
     const firstClassViolations = actions
         .filter(a => a.action !== '上课')
         .filter(a => {
             const c = context.courses.find(co => co.schedule_id === a.schedule_id);
-            return c?.is_first_class;
+            return c && c.schedule_weeks.length > 0 && a.week === c.schedule_weeks[0];
         })
         .map(a => ({
             schedule_id: a.schedule_id,
@@ -121,14 +130,15 @@ export function runSelfChecks(
         violations: firstClassViolations
     });
 
-    // Rule 6: 第一周 → 逃课≤1
-    const firstWeekSkip = actions.filter(a => a.action === '逃课').length;
-    const firstWeekViolations = context.semester_info.is_first_week && firstWeekSkip > 1
+    // Rule 6: 第一周 → 逃课≤1 (per-week: check actions where week === 1)
+    const firstWeekActions = actions.filter(a => a.week === 1);
+    const firstWeekSkip = firstWeekActions.filter(a => a.action === '逃课').length;
+    const firstWeekViolations = firstWeekSkip > 1
         ? [{
             schedule_id: -1,
             action: '整体',
             expected_action: '逃课≤1次',
-            reason: '学期第一周 → 最多逃1次课'
+            reason: `第一周逃课${firstWeekSkip}次 → 最多逃1次课`
           }]
         : [];
     checks.push({

@@ -23,14 +23,14 @@ function makeContext(overrides: Partial<StructuredPlanContext> = {}): Structured
     };
 }
 
-function makeAction(scheduleId: number, action: string): PlanAction {
-    return { schedule_id: scheduleId, action, reason: 'test' } as PlanAction;
+function makeAction(scheduleId: number, week: number, action: string): PlanAction {
+    return { schedule_id: scheduleId, week, action, reason: 'test' } as PlanAction;
 }
 
 describe('Rule 1: 逃课数限制', () => {
     it('should pass when skip count ≤ target', () => {
         const ctx = makeContext({ user_profile: { ...makeContext().user_profile, weekly_skip_target: 3 } });
-        const actions = [makeAction(1, '逃课'), makeAction(2, '逃课'), makeAction(3, '上课')];
+        const actions = [makeAction(1, 1, '逃课'), makeAction(2, 1, '逃课'), makeAction(3, 1, '上课')];
         const checks = runSelfChecks(actions, ctx);
         const rule1 = checks.find(c => c.rule_id === 1)!;
         expect(rule1.passed).toBe(true);
@@ -38,7 +38,7 @@ describe('Rule 1: 逃课数限制', () => {
 
     it('should fail when skip count > target', () => {
         const ctx = makeContext({ user_profile: { ...makeContext().user_profile, weekly_skip_target: 1 } });
-        const actions = [makeAction(1, '逃课'), makeAction(2, '逃课')];
+        const actions = [makeAction(1, 1, '逃课'), makeAction(2, 1, '逃课')];
         const checks = runSelfChecks(actions, ctx);
         const rule1 = checks.find(c => c.rule_id === 1)!;
         expect(rule1.passed).toBe(false);
@@ -59,7 +59,7 @@ describe('Rule 2: 高风险专业课保守', () => {
                 rollcall_info: { method: '随机点名', frequency: '经常' },
             }],
         });
-        const actions = [makeAction(1, '逃课')];
+        const actions = [makeAction(1, 1, '逃课')];
         const checks = runSelfChecks(actions, ctx);
         const rule2 = checks.find(c => c.rule_id === 2)!;
         expect(rule2.passed).toBe(false);
@@ -77,7 +77,7 @@ describe('Rule 2: 高风险专业课保守', () => {
                 rollcall_info: { method: '随机点名', frequency: '经常' },
             }],
         });
-        const actions = [makeAction(1, '上课')];
+        const actions = [makeAction(1, 1, '上课')];
         const checks = runSelfChecks(actions, ctx);
         const rule2 = checks.find(c => c.rule_id === 2)!;
         expect(rule2.passed).toBe(true);
@@ -87,7 +87,7 @@ describe('Rule 2: 高风险专业课保守', () => {
 describe('Rule 3: 签退模式限制', () => {
     it('should fail 签退 when escape_rush_accept is false', () => {
         const ctx = makeContext();
-        const actions = [makeAction(1, '签退')];
+        const actions = [makeAction(1, 1, '签退')];
         const checks = runSelfChecks(actions, ctx);
         const rule3 = checks.find(c => c.rule_id === 3)!;
         expect(rule3.passed).toBe(false);
@@ -97,7 +97,7 @@ describe('Rule 3: 签退模式限制', () => {
         const ctx = makeContext({
             user_profile: { ...makeContext().user_profile, escape_rush_accept: true },
         });
-        const actions = [makeAction(1, '签退')];
+        const actions = [makeAction(1, 1, '签退')];
         const checks = runSelfChecks(actions, ctx);
         const rule3 = checks.find(c => c.rule_id === 3)!;
         expect(rule3.passed).toBe(true);
@@ -109,7 +109,7 @@ describe('Rule 4: 期考周保守', () => {
         const ctx = makeContext({
             semester_info: { ...makeContext().semester_info, is_exam_week: true },
         });
-        const actions = [makeAction(1, '逃课')];
+        const actions = [makeAction(1, 1, '逃课')];
         const checks = runSelfChecks(actions, ctx);
         const rule4 = checks.find(c => c.rule_id === 4)!;
         expect(rule4.passed).toBe(false);
@@ -129,7 +129,7 @@ describe('Rule 5: 第一次课必到', () => {
                 rollcall_info: { method: '不点名', frequency: '从不' },
             }],
         });
-        const actions = [makeAction(1, '逃课')];
+        const actions = [makeAction(1, 1, '逃课')];
         const checks = runSelfChecks(actions, ctx);
         const rule5 = checks.find(c => c.rule_id === 5)!;
         expect(rule5.passed).toBe(false);
@@ -141,7 +141,7 @@ describe('Rule 6: 第一周保守', () => {
         const ctx = makeContext({
             semester_info: { ...makeContext().semester_info, is_first_week: true },
         });
-        const actions = [makeAction(1, '逃课'), makeAction(2, '逃课')];
+        const actions = [makeAction(1, 1, '逃课'), makeAction(2, 1, '逃课')];
         const checks = runSelfChecks(actions, ctx);
         const rule6 = checks.find(c => c.rule_id === 6)!;
         expect(rule6.passed).toBe(false);
@@ -151,7 +151,7 @@ describe('Rule 6: 第一周保守', () => {
         const ctx = makeContext({
             semester_info: { ...makeContext().semester_info, is_first_week: true },
         });
-        const actions = [makeAction(1, '逃课'), makeAction(2, '上课')];
+        const actions = [makeAction(1, 1, '逃课'), makeAction(2, 1, '上课')];
         const checks = runSelfChecks(actions, ctx);
         const rule6 = checks.find(c => c.rule_id === 6)!;
         expect(rule6.passed).toBe(true);
@@ -171,7 +171,7 @@ describe('Rule 7: 用户约束', () => {
                 rollcall_info: { method: '不点名', frequency: '从不' },
             }],
         });
-        const actions = [makeAction(1, '逃课')];
+        const actions = [makeAction(1, 1, '逃课')];
         const checks = runSelfChecks(actions, ctx);
         const rule7 = checks.find(c => c.rule_id === 7)!;
         expect(rule7.passed).toBe(false);

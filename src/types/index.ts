@@ -92,6 +92,7 @@ export interface PlanAction {
     id: number;
     session_id: number;
     schedule_id: number;
+    week: number;
     action: typeof ACTION_TYPES[number];
     reason: string | null;
 }
@@ -176,7 +177,7 @@ export interface CaughtHistoryV1 {
     total: number;
     by_week: Record<string, number>;
     trend: 'increasing' | 'decreasing' | 'stable';
-    bayesian_posterior: {
+    bayesian_posterior?: {
         alpha: number;
         beta: number;
         expected_probability: number;
@@ -226,6 +227,7 @@ export interface StructuredPlanContext {
     user_profile: PlanUserProfile;
     semester_info: PlanSemesterInfo;
     courses: CoursePlanInput[];
+    plan_weeks: number;
     overrides?: PlanOverrides;
     retry_hint?: string;
     temperature_modifier?: number;
@@ -272,6 +274,12 @@ export interface RiskResult {
     risk_level: '无风险' | '低风险' | '中风险' | '高风险';
     risk_reason: string;
     next_caught_probability: number;
+    confidence?: number;
+    disagreement_flag?: {
+        type: 'rule_vs_llm' | 'bayes_vs_rule' | 'all_conflict';
+        details: string;
+        resolution: 'defer_to_rule' | 'defer_to_llm' | 'needs_review';
+    };
 }
 
 export interface RollcallInfo {
@@ -282,7 +290,7 @@ export interface RollcallInfo {
 
 // === Chunk 2: Supervisor Output Types ===
 export interface SupervisorOutput {
-    actions: Array<{ schedule_id: number; action: string; reason: string }>;
+    actions: Array<{ schedule_id: number; week: number; action: string; reason: string }>;
     meta: GenerationMeta;
     decision_rationale: DecisionRationale[];
 }

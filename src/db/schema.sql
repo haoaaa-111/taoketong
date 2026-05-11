@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS plan_action (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id INTEGER NOT NULL REFERENCES plan_session(id) ON DELETE CASCADE,
     schedule_id INTEGER NOT NULL REFERENCES course_schedule(id) ON DELETE CASCADE,
+    week INTEGER,
     action TEXT NOT NULL CHECK (action IN ('上课', '逃课', '签退')),
     reason TEXT
 );
