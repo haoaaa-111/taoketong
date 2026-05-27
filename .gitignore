@@ -40,8 +40,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# database
-/data/
-
-# logs
+# data runtime files (keep code files)
+/data/*.md
+/data/rollcallskills/
+/data/plans/
+/data/feedback/
+/data/refined/
+/data/profiles/
+/data/meta/
+/data/*.db
 data/*.log
+
+# Playwright
+/playwright-report/
+/test-results/
+/test-screenshots/
+/.playwright-mcp/
+
+# OpenCode
+/.opencode/
