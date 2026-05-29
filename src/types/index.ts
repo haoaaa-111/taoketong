@@ -388,4 +388,6 @@ export interface PlanVersion {
     timestamp: string;
     week: number;
     actions: PlanAction[];
+    fileName?: string;
+    isCurrent?: boolean;
 }
