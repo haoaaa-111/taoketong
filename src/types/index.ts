@@ -373,6 +373,7 @@ export interface RollcallEvent {
     method: string;
     wasCaught: boolean;
     notes?: string;
+    courseName?: string;
 }
 
 export interface FeedbackData {
