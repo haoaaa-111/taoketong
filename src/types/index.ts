@@ -386,8 +386,8 @@ export interface FeedbackData {
 
 export interface PlanVersion {
     timestamp: string;
-    week: number;
-    actions: PlanAction[];
+    week?: number;
+    actions?: PlanAction[];
     fileName?: string;
     isCurrent?: boolean;
 }
