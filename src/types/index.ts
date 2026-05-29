@@ -338,3 +338,54 @@ export interface CourseGroup {
     credits?: number;
     sessions: SessionEntry[];
 }
+
+// === FS Store Types ===
+export interface CourseMeta {
+    name: string;
+    courseType: string;
+    studyMode: string;
+    teacherAttitude: string;
+    evacuationDifficulty: string;
+    caughtTolerance: number;
+    maxCaughtCount: number;
+    examWeeks: unknown;
+    notes: string | null;
+    rollcallMethods: RollcallMethod[];
+    schedules: CourseMetaSchedule[];
+    infoStatus?: string;
+}
+
+export interface RollcallMethod {
+    method: string;
+    frequency: string;
+}
+
+export interface CourseMetaSchedule {
+    scheduleId: number;
+    dayOfWeek: string;
+    period: string;
+    weeks: number[];
+}
+
+export interface RollcallEvent {
+    week: number;
+    date: string;
+    method: string;
+    wasCaught: boolean;
+    notes?: string;
+}
+
+export interface FeedbackData {
+    week: number;
+    date: string;
+    rating?: number;
+    wasCaught: boolean;
+    caughtCourses?: string[];
+    notes?: string;
+}
+
+export interface PlanVersion {
+    timestamp: string;
+    week: number;
+    actions: PlanAction[];
+}
