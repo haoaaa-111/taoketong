@@ -72,11 +72,14 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-            const result = await generateSession({});
+            const result = await generateSession({ review_answers: [] });
             return NextResponse.json({
                 success: true,
+                status: result.status,
                 new_session_id: result.session_id,
                 new_actions: result.actions,
+                review: result.review,
+                review_id: result.review_id,
             });
         } catch (e) {
             const errorResult = handleError(e);
