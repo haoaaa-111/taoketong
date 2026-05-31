@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import CourseEditor from '@/components/onboarding/CourseEditor';
+import SupervisorReviewDialog from '@/components/schedule/SupervisorReviewDialog';
 
 interface ParsedCourse {
     name: string;
@@ -20,6 +21,8 @@ export default function OnboardingStep3() {
     const [courseData, setCourseData] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [reviewData, setReviewData] = useState<{ assessment: string; questions: any[] } | null>(null);
+    const [reviewId, setReviewId] = useState<string | null>(null);
 
     useEffect(() => {
         const step1Data = localStorage.getItem('onboarding_step1');
@@ -51,6 +54,19 @@ export default function OnboardingStep3() {
 
     const handleCourseChange = (courseName: string, data: any) => {
         setCourseData(prev => ({ ...prev, [courseName]: data }));
+    };
+
+    const handleReviewComplete = (result: any) => {
+        if (result.status === 'ok' && result.session_id) {
+            localStorage.removeItem('onboarding_step1');
+            localStorage.removeItem('onboarding_step2');
+            router.push('/schedule');
+        } else {
+            setError('方案生成失败');
+            setReviewData(null);
+            setReviewId(null);
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -106,6 +122,13 @@ export default function OnboardingStep3() {
             });
 
             if (sessionRes.ok) {
+                const data = await sessionRes.json();
+                if (data.status === 'needs_review' && data.review) {
+                    setReviewData(data.review);
+                    setReviewId(data.review_id || null);
+                    setLoading(false);
+                    return;
+                }
                 localStorage.removeItem('onboarding_step1');
                 localStorage.removeItem('onboarding_step2');
                 router.push('/schedule');
@@ -120,7 +143,7 @@ export default function OnboardingStep3() {
         }
     };
 
-    if (loading) {
+    if (loading && !reviewData) {
         return (
             <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
                 <div className="text-center">
@@ -163,6 +186,19 @@ export default function OnboardingStep3() {
                         完成校对并生成方案
                     </button>
                 </div>
+
+                {reviewData && reviewId && (
+                    <SupervisorReviewDialog
+                        open={true}
+                        onClose={() => {
+                            setReviewData(null);
+                            setReviewId(null);
+                        }}
+                        review={reviewData}
+                        reviewId={reviewId}
+                        onComplete={handleReviewComplete}
+                    />
+                )}
             </div>
         </div>
     );
