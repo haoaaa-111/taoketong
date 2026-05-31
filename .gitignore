@@ -49,6 +49,8 @@ next-env.d.ts
 /data/profiles/
 /data/meta/
 /data/*.db
+/data/*.db-shm
+/data/*.db-wal
 data/*.log
 
 # Playwright
