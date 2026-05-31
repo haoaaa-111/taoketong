@@ -14,6 +14,7 @@ const AGENT_ENV_MAP: Record<string, string> = {
     'parser': 'PARSER_LLM_MODEL',
     'compressor': 'COMPRESSOR_LLM_MODEL',
     'curator-review': 'CURATOR_LLM_MODEL',
+    'reviewer': 'REVIEWER_LLM_MODEL',
 };
 
 let sessionTokens = { input: 0, output: 0 };
