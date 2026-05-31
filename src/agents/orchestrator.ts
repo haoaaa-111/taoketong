@@ -7,25 +7,40 @@ import { buildSupervisorSystemPrompt } from './prompt-builder';
 import { runSelfChecks, formatViolationsHint } from './rule-validator';
 import { buildPlanContext } from './context-builder';
 import { modelAllCourses } from './modeler-pool';
+import { reviewContext } from './reviewer';
 import { addDays, formatISO } from 'date-fns';
 import { SessionGenerationError } from './session-error';
 import crypto from 'crypto';
 import { logger, setTraceId } from '@/lib/logger';
 import { recordSessionMetrics } from '@/lib/metrics';
 import { resetSessionTokens, getSessionTokens } from '@/lib/llm';
-import type { PlanAction, StructuredPlanContext } from '@/types';
+import type { PlanAction, ReviewAnswer, ReviewResult, StructuredPlanContext } from '@/types';
 
 export interface SessionInput {
     adjustment_notes?: string;
     constraints?: { skip_course_ids?: number[]; must_attend_ids?: number[] };
+    review_answers?: ReviewAnswer[];
+}
+
+export interface SessionResult {
+    status: 'ok' | 'needs_review';
+    session_id: number | null;
+    actions: PlanAction[];
+    review?: ReviewResult;
+    review_id?: string;
 }
 
 const MAX_RETRIES = 3;
 const TEMP_STEP = 0.2;
 
-export async function generateSession(input: SessionInput): Promise<{
-    session_id: number; actions: PlanAction[];
-}> {
+function generateReviewId(review: ReviewResult): string {
+    return Buffer.from(JSON.stringify({
+        t: Date.now(),
+        q: review.questions.map(q => q.id),
+    })).toString('base64url');
+}
+
+export async function generateSession(input: SessionInput): Promise<SessionResult> {
     const traceId = crypto.randomUUID();
     setTraceId(traceId);
     resetSessionTokens();
@@ -52,7 +67,23 @@ export async function generateSession(input: SessionInput): Promise<{
 
     const riskResults = await modelAllCourses(courses, { current_week: config.current_week ?? 1 });
     const t2 = Date.now();
-    const ctx = buildPlanContext(courses, profile, config, riskResults, input.constraints?.must_attend_ids);
+    const ctx = buildPlanContext(courses, profile, config, riskResults, input.constraints?.must_attend_ids, input.review_answers);
+
+    if (input.review_answers === undefined) {
+        const review = await reviewContext(ctx);
+        if (!review.is_sufficient && review.questions.length > 0) {
+            const reviewId = generateReviewId(review);
+            logger.info('Orchestrator', `Review found gaps, returning ${review.questions.length} questions, review_id=${reviewId}`);
+            return {
+                status: 'needs_review',
+                session_id: null,
+                actions: [],
+                review,
+                review_id: reviewId,
+            };
+        }
+    }
+
     const plan = await generateWithRetry(ctx);
     const t3 = Date.now();
 
@@ -103,7 +134,7 @@ export async function generateSession(input: SessionInput): Promise<{
         temperature_used: 0.8,
     });
 
-    return result;
+    return { status: 'ok' as const, ...result };
 }
 
 async function generateWithRetry(ctx: StructuredPlanContext): Promise<{
