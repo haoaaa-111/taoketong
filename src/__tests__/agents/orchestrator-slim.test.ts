@@ -8,8 +8,8 @@ describe('Orchestrator Responsibility Separation', () => {
         const content = readFileSync(orchestratorPath, 'utf-8');
         const lines = content.split('\n');
 
-        // Post-parallelism + metrics/trace_id instrumentation
-        expect(lines.length).toBeLessThanOrEqual(125);
+        // Post-review-gate + metrics/trace_id instrumentation
+        expect(lines.length).toBeLessThanOrEqual(160);
     });
 
     it('should not contain prompt-building logic (moved to prompt-builder.ts)', () => {

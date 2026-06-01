@@ -95,5 +95,13 @@ export function buildSupervisorSystemPrompt(ctx: StructuredPlanContext): string 
         blocks.push(`\n## ⚠️ 修正反馈\n${ctx.retry_hint}`);
     }
 
+    // User review answers if present
+    if (ctx.review_answers && ctx.review_answers.length > 0) {
+        const reviewBlock = ctx.review_answers
+            .map(a => `- Q: ${a.question_id} → A: ${a.answer}`)
+            .join('\n');
+        blocks.push(`\n## 用户对信息审查的回复\n${reviewBlock}`);
+    }
+
     return blocks.join('\n\n---\n\n');
 }

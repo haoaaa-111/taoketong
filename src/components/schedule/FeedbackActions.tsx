@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import RejectDialog from './RejectDialog';
 import IntelDialog from './IntelDialog';
+import SupervisorReviewDialog from './SupervisorReviewDialog';
 
 interface Props {
     sessionId: number;
@@ -13,6 +14,8 @@ interface Props {
 export default function FeedbackActions({ sessionId, onRegenerate, onAccept }: Props) {
     const [rejectOpen, setRejectOpen] = useState(false);
     const [intelOpen, setIntelOpen] = useState(false);
+    const [reviewData, setReviewData] = useState<{ assessment: string; questions: any[] } | null>(null);
+    const [reviewId, setReviewId] = useState<string | null>(null);
 
     const handleAccept = async () => {
         await fetch('/api/feedback/immediate', {
@@ -25,6 +28,24 @@ export default function FeedbackActions({ sessionId, onRegenerate, onAccept }: P
             }),
         });
         onAccept?.();
+    };
+
+    const handleRegenerate = (result: any) => {
+        if (result.status === 'needs_review' && result.review) {
+            setReviewData(result.review);
+            setReviewId(result.review_id || null);
+            return;
+        }
+        onRegenerate(result);
+    };
+
+    const handleReviewComplete = (result: any) => {
+        if (result.status === 'ok' && result.session_id) {
+            onRegenerate({ new_actions: result.actions, new_session_id: result.session_id });
+        } else {
+            setReviewData(null);
+            setReviewId(null);
+        }
     };
 
     return (
@@ -45,13 +66,26 @@ export default function FeedbackActions({ sessionId, onRegenerate, onAccept }: P
                 open={rejectOpen}
                 onClose={() => setRejectOpen(false)}
                 sessionId={sessionId}
-                onSuccess={onRegenerate}
+                onSuccess={handleRegenerate}
             />
             <IntelDialog
                 open={intelOpen}
                 onClose={() => setIntelOpen(false)}
                 sessionId={sessionId}
             />
+
+            {reviewData && reviewId && (
+                <SupervisorReviewDialog
+                    open={true}
+                    onClose={() => {
+                        setReviewData(null);
+                        setReviewId(null);
+                    }}
+                    review={reviewData}
+                    reviewId={reviewId}
+                    onComplete={handleReviewComplete}
+                />
+            )}
         </>
     );
 }

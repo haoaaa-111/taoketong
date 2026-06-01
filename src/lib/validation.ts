@@ -114,3 +114,11 @@ export const ConfigUpdateSchema = z.object({
     current_week: z.number().int().positive().nullable().optional(),
     current_day_of_week: z.number().int().min(1).max(7).nullable().optional(),
 }).passthrough();
+
+export const ContinueSessionSchema = z.object({
+    review_id: z.string().min(1, 'review_id is required'),
+    answers: z.array(z.object({
+        question_id: z.string().min(1),
+        answer: z.string(),
+    })),
+});

@@ -232,6 +232,7 @@ export interface StructuredPlanContext {
     retry_hint?: string;
     temperature_modifier?: number;
     memory_context?: string;
+    review_answers?: ReviewAnswer[];
 }
 
 export interface PlanUserProfile {
@@ -391,4 +392,24 @@ export interface PlanVersion {
     actions?: PlanAction[];
     fileName?: string;
     isCurrent?: boolean;
+}
+
+// === Supervisor Review Types ===
+export interface ReviewQuestion {
+    id: string;
+    text: string;
+    context: string;
+    type: 'choice' | 'open';
+    options?: string[];
+}
+
+export interface ReviewResult {
+    is_sufficient: boolean;
+    assessment: string;
+    questions: ReviewQuestion[];
+}
+
+export interface ReviewAnswer {
+    question_id: string;
+    answer: string;
 }

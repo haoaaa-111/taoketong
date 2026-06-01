@@ -1,4 +1,4 @@
-import type { StructuredPlanContext, CoursePlanInput, RollcallInfo } from '@/types';
+import type { StructuredPlanContext, CoursePlanInput, RollcallInfo, ReviewAnswer } from '@/types';
 import type { FusionResult } from './risk/fusion-layer';
 
 function parseExamWeeks(data: Record<string, unknown>): { mid?: number; final?: number } | null {
@@ -28,6 +28,7 @@ export function buildPlanContext(
     config: { current_week: number | null; current_day_of_week: number | null },
     riskResults: Record<number, FusionResult>,
     mustAttendIds?: number[],
+    reviewAnswers?: ReviewAnswer[],
 ): StructuredPlanContext {
     const currentWeek = config.current_week ?? 1;
     const courseInputs: CoursePlanInput[] = courses.flatMap((c) => {
@@ -83,6 +84,7 @@ export function buildPlanContext(
         },
         courses: courseInputs,
         plan_weeks: profile.plan_weeks ?? 1,
+        review_answers: reviewAnswers,
     };
 }
 
