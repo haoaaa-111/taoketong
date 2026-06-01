@@ -2,9 +2,11 @@ import { render, screen } from '@testing-library/react';
 import OnboardingPage from '@/app/onboarding/page';
 
 jest.mock('next/link', () => {
-  return ({ children, href, className }: { children: React.ReactNode; href: string; className?: string }) => (
+  const MockLink = ({ children, href, className }: { children: React.ReactNode; href: string; className?: string }) => (
     <a href={href} className={className}>{children}</a>
   );
+  MockLink.displayName = 'MockLink';
+  return MockLink;
 });
 
 describe('Onboarding welcome page', () => {
